@@ -45,6 +45,20 @@
   --spacing-gutter-lg: 24px;
   --spacing-gutter-xl: 32px;
   --spacing-layout-margin: 32px;
+
+  --animate-indeterminate: indeterminate-bar 1.4s ease-in-out infinite;
+
+  @keyframes indeterminate-bar {
+    0% {
+      transform: translateX(-100%) scaleX(0.4);
+    }
+    50% {
+      transform: translateX(50%) scaleX(0.7);
+    }
+    100% {
+      transform: translateX(200%) scaleX(0.4);
+    }
+  }
 }
 
 :root {
@@ -146,4 +160,82 @@ body {
 .glow-border {
   border-radius: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  font-family: 'Geist', sans-serif;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin: 1.25em 0 0.5em;
+}
+
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child {
+  margin-top: 0;
+}
+
+.markdown-content h1 {
+  font-size: 1.125rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.0625rem;
+}
+
+.markdown-content h3 {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+}
+
+.markdown-content p {
+  margin: 0 0 0.75em;
+  line-height: 1.6;
+}
+
+.markdown-content strong {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.markdown-content em {
+  color: var(--on-surface-variant);
+  font-style: italic;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+
+.markdown-content ul {
+  list-style: disc;
+}
+
+.markdown-content ol {
+  list-style: decimal;
+}
+
+.markdown-content li > ul,
+.markdown-content li > ol {
+  margin-top: 0.4em;
+  margin-bottom: 0;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--outline-variant);
+  margin: 1em 0;
+}
+
+.markdown-content > *:last-child {
+  margin-bottom: 0;
 }

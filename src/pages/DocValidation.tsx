@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { createComparison, getComparison } from '../api/docValidation'
 import { ComparisonReport } from '../components/ComparisonReport'
+import { FileDropzone } from '../components/FileDropzone'
+import { LoadingBar } from '../components/LoadingBar'
 import { useJobPolling } from '../hooks/useJobPolling'
 import { getDocValidationSettings } from '../lib/docValidationSettings'
 
@@ -53,35 +55,22 @@ export function DocValidation() {
         onSubmit={handleSubmit}
         className="flex flex-col gap-gutter-md rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-6 backdrop-blur-2xl"
       >
-        <label className="flex flex-col gap-2 text-sm text-on-surface">
-          Documento esperado (plantilla)
-          <input
-            type="file"
-            accept=".pdf,.docx"
-            onChange={(e) => setExpected(e.target.files?.[0] ?? null)}
-            required
-            className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-on-surface-variant file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-on-primary"
-          />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-on-surface">
-          Documento actual (generado)
-          <input
-            type="file"
-            accept=".pdf,.docx"
-            onChange={(e) => setActual(e.target.files?.[0] ?? null)}
-            required
-            className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-on-surface-variant file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-on-primary"
-          />
-        </label>
-        <label className="flex items-center gap-2 text-sm text-on-surface">
-          <input
-            type="checkbox"
-            checked={enableVisual}
-            onChange={(e) => setEnableVisual(e.target.checked)}
-            className="h-4 w-4 accent-primary"
-          />
-          Incluir análisis visual (requiere LibreOffice)
-        </label>
+        <FileDropzone label="Documento esperado (plantilla)" file={expected} onChange={setExpected} />
+        <FileDropzone label="Documento actual (generado)" file={actual} onChange={setActual} />
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm text-on-surface">
+            <input
+              type="checkbox"
+              checked={enableVisual}
+              onChange={(e) => setEnableVisual(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Incluir análisis visual (requiere LibreOffice)
+          </label>
+          <p className="pl-6 text-xs text-on-surface-variant">
+            Con esta opción, la comparación tarda más en procesarse.
+          </p>
+        </div>
         <label className="flex items-center gap-2 text-sm text-on-surface">
           <input
             type="checkbox"
@@ -111,7 +100,7 @@ export function DocValidation() {
         </p>
       )}
 
-      {job?.status === 'pending' && <p className="text-on-surface-variant">Procesando comparación…</p>}
+      {job?.status === 'pending' && <LoadingBar label="Procesando comparación…" />}
       {job?.status === 'error' && (
         <p className="rounded-xl border border-error/30 bg-error-container/20 p-4 text-on-error-container">
           Error: {job.error}

@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getComparison } from '../api/docValidation'
 import { getExecutionFileUrl, listExecutions, rerunExecution } from '../api/reports'
 import type { ExecutionRecord, ListExecutionsFilters } from '../api/reports'
+import { CopyButton } from '../components/CopyButton'
+import { formatComparisonResult } from '../lib/formatReport'
+
+async function copyExecutionResult(jobId: string): Promise<string> {
+  const response = await getComparison(jobId)
+  if (response.status !== 'done') {
+    throw new Error('El resultado de esta ejecución todavía no está disponible.')
+  }
+  return formatComparisonResult(response.result)
+}
 
 const MODULES = [
   { key: 'doc-validation', label: 'Validación de documentos', available: true },
@@ -225,15 +236,23 @@ export function Reportes() {
                     )}
                   </td>
                   <td className="px-gutter-md py-4 text-right">
-                    <button
-                      type="button"
-                      disabled={rerunningId === record.job_id}
-                      onClick={() => handleRerun(record.job_id)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/30 bg-surface-container-high px-3.5 py-2 text-sm font-medium text-on-surface transition-all hover:border-primary/50 hover:bg-primary hover:text-on-primary disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">play_arrow</span>
-                      {rerunningId === record.job_id ? 'Ejecutando…' : 'Ejecutar de nuevo'}
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <CopyButton
+                        getText={() => copyExecutionResult(record.job_id)}
+                        iconOnly
+                        label="Copiar resultados"
+                        className="inline-flex items-center rounded-xl border border-outline-variant/30 bg-surface-container-high p-2 text-on-surface transition-all hover:border-primary/50 hover:bg-primary hover:text-on-primary"
+                      />
+                      <button
+                        type="button"
+                        disabled={rerunningId === record.job_id}
+                        onClick={() => handleRerun(record.job_id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/30 bg-surface-container-high px-3.5 py-2 text-sm font-medium text-on-surface transition-all hover:border-primary/50 hover:bg-primary hover:text-on-primary disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">play_arrow</span>
+                        {rerunningId === record.job_id ? 'Ejecutando…' : 'Ejecutar de nuevo'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
