@@ -85,33 +85,53 @@ export function Reportes() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-gutter-lg p-layout-margin">
-      <div className="flex items-center gap-gutter-sm self-start rounded-2xl border border-outline-variant/30 bg-surface-container-low p-1.5">
-        {MODULES.map((m) =>
-          m.available ? (
-            <button
-              key={m.key}
-              type="button"
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm"
-            >
+      <div className="sm:hidden">
+        <label htmlFor="module-select" className="sr-only">
+          Selecciona un módulo
+        </label>
+        <select
+          id="module-select"
+          defaultValue="doc-validation"
+          className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-sm font-medium text-on-surface outline-none focus:border-primary"
+        >
+          {MODULES.map((m) => (
+            <option key={m.key} value={m.key} disabled={!m.available}>
               {m.label}
-            </button>
-          ) : (
-            <button
-              key={m.key}
-              type="button"
-              disabled
-              className="flex cursor-not-allowed items-center gap-2 rounded-xl px-4 py-2 text-sm text-on-surface-variant"
-            >
-              {m.label}
-              <span className="rounded-full border border-outline-variant/30 bg-surface-container-high px-2 py-0.5 text-xs">
-                Próximamente
-              </span>
-            </button>
-          ),
-        )}
+              {!m.available ? ' (Próximamente)' : ''}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="grid grid-cols-1 gap-gutter-md rounded-2xl border border-outline-variant/30 bg-surface-container/70 p-6 backdrop-blur-2xl md:grid-cols-4">
+      <div className="hidden w-full max-w-full overflow-x-auto sm:block">
+        <div className="flex w-max items-center gap-gutter-sm rounded-2xl border border-outline-variant/30 bg-surface-container-low p-1.5">
+          {MODULES.map((m) =>
+            m.available ? (
+              <button
+                key={m.key}
+                type="button"
+                className="shrink-0 whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm"
+              >
+                {m.label}
+              </button>
+            ) : (
+              <button
+                key={m.key}
+                type="button"
+                disabled
+                className="flex shrink-0 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-sm text-on-surface-variant"
+              >
+                {m.label}
+                <span className="whitespace-nowrap rounded-full border border-outline-variant/30 bg-surface-container-high px-2 py-0.5 text-xs">
+                  Próximamente
+                </span>
+              </button>
+            ),
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-gutter-md rounded-2xl border border-outline-variant/30 bg-surface-container/70 p-4 backdrop-blur-2xl sm:p-6 md:grid-cols-4">
         <label className="flex flex-col gap-2">
           <span className="text-xs uppercase tracking-wider text-on-surface-variant">
             Estado de ejecución
@@ -260,7 +280,7 @@ export function Reportes() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-outline-variant/30 bg-surface-container-low/80 p-4 text-sm text-on-surface-variant">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 bg-surface-container-low/80 p-4 text-sm text-on-surface-variant">
           <span className="font-code text-xs">Mostrando {items.length} de {total} ejecuciones</span>
           <div className="flex items-center gap-2">
             <button

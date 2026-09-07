@@ -34,10 +34,10 @@ export function Ajustes() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-8 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-8 backdrop-blur-2xl">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-6 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-4 backdrop-blur-2xl sm:gap-8 sm:p-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20">
               <span className="material-symbols-outlined text-[24px]">rule_settings</span>
             </div>
             <div>
@@ -47,14 +47,14 @@ export function Ajustes() {
               </p>
             </div>
           </div>
-          <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-code text-xs text-primary">
+          <span className="self-start rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-code text-xs text-primary sm:self-auto">
             Activo
           </span>
         </div>
 
         <div className="h-px w-full bg-outline-variant/20" />
 
-        <div className="flex items-start justify-between gap-gutter-xl rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40">
+        <div className="flex flex-col gap-4 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40 sm:flex-row sm:items-start sm:justify-between sm:gap-gutter-xl">
           <div className="flex max-w-md flex-col gap-1">
             <label htmlFor="toggle-visual" className="cursor-pointer font-medium text-on-surface">
               Incluir análisis visual por defecto
@@ -63,7 +63,7 @@ export function Ajustes() {
               Compara automáticamente píxeles y diferencias de renderizado visual en cada ejecución.
             </p>
           </div>
-          <div className="flex h-full items-center pt-1">
+          <div className="flex items-center sm:h-full sm:pt-1">
             <ToggleSwitch
               id="toggle-visual"
               checked={settings.enableVisualByDefault}
@@ -72,7 +72,7 @@ export function Ajustes() {
           </div>
         </div>
 
-        <div className="flex items-start justify-between gap-gutter-xl rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40">
+        <div className="flex flex-col gap-4 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40 sm:flex-row sm:items-start sm:justify-between sm:gap-gutter-xl">
           <div className="flex max-w-md flex-col gap-1">
             <label htmlFor="toggle-variables" className="cursor-pointer font-medium text-on-surface">
               Ocultar rellenos variables por defecto
@@ -81,7 +81,7 @@ export function Ajustes() {
               Omite marcas de tiempo y campos dinámicos para evitar falsos positivos en las comparaciones.
             </p>
           </div>
-          <div className="flex h-full items-center pt-1">
+          <div className="flex items-center sm:h-full sm:pt-1">
             <ToggleSwitch
               id="toggle-variables"
               checked={settings.hideVariableFillsByDefault}
@@ -90,7 +90,7 @@ export function Ajustes() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse items-stretch gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
           <button
             type="button"
             onClick={handleDiscard}
@@ -101,7 +101,7 @@ export function Ajustes() {
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-2 rounded-xl border border-primary-fixed/30 bg-primary px-6 py-2.5 font-medium text-on-primary shadow-lg shadow-primary/25 transition-all hover:opacity-90"
+            className="flex items-center justify-center gap-2 rounded-xl border border-primary-fixed/30 bg-primary px-6 py-2.5 font-medium text-on-primary shadow-lg shadow-primary/25 transition-all hover:opacity-90"
           >
             <span className="material-symbols-outlined text-[18px]">
               {saved ? 'check' : 'save'}
