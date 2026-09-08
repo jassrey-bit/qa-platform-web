@@ -41,49 +41,58 @@ export function DocValidation() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-gutter-lg p-layout-margin">
+    <div className="flex w-full flex-col gap-gutter-lg p-layout-margin">
       <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight text-on-surface">
+        <h1 className="font-headline text-2xl font-bold tracking-tight text-on-surface">
           Validación de documentos
         </h1>
-        <p className="mt-1 text-on-surface-variant">
-          Compara un documento generado contra su plantilla esperada (PDF y/o DOCX).
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Sube la plantilla esperada y el documento generado: las diferencias quedan resaltadas en rojo y
+          verde directamente sobre cada página, junto con el detalle de cada discrepancia.
         </p>
       </div>
 
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-gutter-md rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-6 backdrop-blur-2xl"
+        className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-4 backdrop-blur-2xl"
       >
-        <FileDropzone label="Documento esperado (plantilla)" file={expected} onChange={setExpected} />
-        <FileDropzone label="Documento actual (generado)" file={actual} onChange={setActual} />
-        <div className="flex flex-col gap-1">
-          <label className="flex items-center gap-2 text-sm text-on-surface">
-            <input
-              type="checkbox"
-              checked={enableVisual}
-              onChange={(e) => setEnableVisual(e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            Incluir análisis visual (requiere LibreOffice)
-          </label>
-          <p className="pl-6 text-xs text-on-surface-variant">
-            Con esta opción, la comparación tarda más en procesarse.
-          </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <FileDropzone compact label="Plantilla" file={expected} onChange={setExpected} />
+            <FileDropzone compact label="Actual" file={actual} onChange={setActual} />
+          </div>
+
+          <div className="hidden h-8 w-px bg-outline-variant/30 sm:block" />
+
+          <div className="flex flex-wrap items-center gap-4">
+            <label
+              className="flex items-center gap-2 text-sm text-on-surface"
+              title="Requiere LibreOffice. Con esta opción, la comparación tarda más en procesarse."
+            >
+              <input
+                type="checkbox"
+                checked={enableVisual}
+                onChange={(e) => setEnableVisual(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              Análisis visual
+            </label>
+            <label className="flex items-center gap-2 text-sm text-on-surface">
+              <input
+                type="checkbox"
+                checked={hideVariableFills}
+                onChange={(e) => setHideVariableFills(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              Ocultar rellenos variables
+            </label>
+          </div>
         </div>
-        <label className="flex items-center gap-2 text-sm text-on-surface">
-          <input
-            type="checkbox"
-            checked={hideVariableFills}
-            onChange={(e) => setHideVariableFills(e.target.checked)}
-            className="h-4 w-4 accent-primary"
-          />
-          Ocultar rellenos variables
-        </label>
+
         <button
           type="submit"
           disabled={!actual || !expected || polling}
-          className="self-start rounded-xl bg-primary px-5 py-2.5 font-medium text-on-primary shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl bg-primary px-5 py-2.5 font-medium text-on-primary shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {polling ? 'Comparando…' : 'Comparar'}
         </button>
@@ -106,7 +115,36 @@ export function DocValidation() {
           Error: {job.error}
         </p>
       )}
-      {job?.status === 'done' && <ComparisonReport result={job.result} />}
+
+      {job?.status === 'done' && (
+        <ComparisonReport
+          result={job.result}
+          jobId={job.job_id}
+          pages={job.pages}
+          expectedFilename={expected?.name ?? job.result.expected_path.split(/[\\/]/).pop() ?? 'Esperado'}
+          actualFilename={actual?.name ?? job.result.actual_path.split(/[\\/]/).pop() ?? 'Actual'}
+        />
+      )}
+
+      {!jobId && (
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-outline-variant/30 bg-surface-container/30 p-10 text-center">
+          <span className="material-symbols-outlined text-[40px] text-on-surface-variant/50">difference</span>
+          <div>
+            <h2 className="font-headline text-lg text-on-surface">Aún no hay una comparación</h2>
+            <p className="mx-auto mt-1 max-w-md text-sm text-on-surface-variant">
+              Selecciona la plantilla y el documento generado arriba, luego presiona "Comparar" para ver el
+              visor de documentos lado a lado y el detalle de discrepancias.
+            </p>
+          </div>
+          <div className="mt-2 grid w-full grid-cols-1 gap-3 opacity-40 lg:grid-cols-5">
+            <div className="h-48 rounded-xl bg-surface-container-low lg:col-span-3" />
+            <div className="flex flex-col gap-3 lg:col-span-2">
+              <div className="h-20 rounded-xl bg-surface-container-low" />
+              <div className="h-24 rounded-xl bg-surface-container-low" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

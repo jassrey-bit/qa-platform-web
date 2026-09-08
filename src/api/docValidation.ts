@@ -59,10 +59,16 @@ export interface ComparisonResult {
   summary: ComparisonSummary
 }
 
+export interface ComparisonPages {
+  actual_count: number
+  expected_count: number
+  error: string | null
+}
+
 export type JobStatusResponse =
   | { job_id: string; status: 'pending' }
   | { job_id: string; status: 'error'; error: string }
-  | { job_id: string; status: 'done'; result: ComparisonResult }
+  | { job_id: string; status: 'done'; result: ComparisonResult; pages: ComparisonPages }
 
 export interface CreateComparisonOptions {
   enableVisual?: boolean
@@ -96,4 +102,12 @@ export async function getComparison(jobId: string): Promise<JobStatusResponse> {
     throw new Error(`No se pudo consultar el job (HTTP ${response.status})`)
   }
   return response.json()
+}
+
+export function getComparisonPageUrl(jobId: string, kind: 'actual' | 'expected', pageNum: number): string {
+  return `${BASE_URL}/comparisons/${jobId}/pages/${kind}/${pageNum}`
+}
+
+export function getComparisonRenderPdfUrl(jobId: string, kind: 'actual' | 'expected'): string {
+  return `${BASE_URL}/comparisons/${jobId}/render-pdf/${kind}`
 }

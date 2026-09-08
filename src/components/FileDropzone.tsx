@@ -17,10 +17,12 @@ export function FileDropzone({
   label,
   file,
   onChange,
+  compact = false,
 }: {
   label: string
   file: File | null
   onChange: (file: File | null) => void
+  compact?: boolean
 }) {
   const inputId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -54,6 +56,57 @@ export function FileDropzone({
     setError(null)
     onChange(null)
     if (inputRef.current) inputRef.current.value = ''
+  }
+
+  if (compact) {
+    return (
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragActive(true)
+        }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all ${
+          dragActive
+            ? 'border-primary bg-primary/5'
+            : error
+              ? 'border-error/50 bg-error/5'
+              : 'border-outline-variant/40 bg-surface-container-low hover:border-primary/50'
+        }`}
+      >
+        <input
+          ref={inputRef}
+          id={inputId}
+          type="file"
+          accept=".pdf,.docx"
+          onChange={handleInputChange}
+          className="hidden"
+        />
+        <label htmlFor={inputId} className="shrink-0 text-on-surface-variant" onClick={(e) => e.preventDefault()}>
+          {label}:
+        </label>
+        {file ? (
+          <>
+            <span className="material-symbols-outlined text-[16px] text-primary">description</span>
+            <span className="max-w-[160px] truncate font-medium text-on-surface">{file.name}</span>
+            <span className="shrink-0 text-xs text-on-surface-variant">{formatFileSize(file.size)}</span>
+            <button
+              type="button"
+              onClick={handleRemove}
+              aria-label="Quitar archivo"
+              className="inline-flex items-center rounded p-0.5 text-on-surface-variant hover:bg-error/10 hover:text-error"
+            >
+              <span className="material-symbols-outlined text-[16px]">close</span>
+            </button>
+          </>
+        ) : (
+          <span className="text-primary">Seleccionar archivo</span>
+        )}
+        {error && <span className="text-xs text-error">{error}</span>}
+      </div>
+    )
   }
 
   return (

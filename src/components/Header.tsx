@@ -14,7 +14,7 @@ export function Header() {
 
   return (
     <header className="fixed top-0 z-50 w-full border-b border-outline-variant/40 bg-surface/75 backdrop-blur-2xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-gutter-lg">
+      <div className="flex h-16 items-center justify-between px-layout-margin">
         <NavLink to="/" className="font-headline text-lg font-bold tracking-tight text-on-surface">
           QA Platform
         </NavLink>
@@ -63,7 +63,7 @@ export function Header() {
       </div>
 
       {menuOpen && (
-        <nav className="flex flex-col gap-1 border-t border-outline-variant/40 bg-surface px-gutter-lg py-3 md:hidden">
+        <nav className="flex flex-col gap-1 border-t border-outline-variant/40 bg-surface px-layout-margin py-3 md:hidden">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.path}
