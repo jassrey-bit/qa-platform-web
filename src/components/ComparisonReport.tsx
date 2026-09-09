@@ -14,11 +14,23 @@ interface ComparisonReportProps {
   pages: ComparisonPages
   expectedFilename: string
   actualFilename: string
+  onRetryVisual?: () => void
+  visualRetrying?: boolean
+  visualRetryError?: string | null
 }
 
 type SeverityFilter = 'all' | Severity
 
-export function ComparisonReport({ result, jobId, pages, expectedFilename, actualFilename }: ComparisonReportProps) {
+export function ComparisonReport({
+  result,
+  jobId,
+  pages,
+  expectedFilename,
+  actualFilename,
+  onRetryVisual,
+  visualRetrying,
+  visualRetryError,
+}: ComparisonReportProps) {
   const { structural, semantic, visual, summary } = result
   const passed = summary.status === 'PASSED'
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
@@ -192,7 +204,40 @@ export function ComparisonReport({ result, jobId, pages, expectedFilename, actua
                   <VisualAnalysis visual={visual} />
                 </div>
               ) : (
-                <p className="mt-1 text-sm text-on-surface-variant">No disponible: {visual.error}</p>
+                <div className="mt-1 flex flex-col gap-3">
+                  <div>
+                    <p className="text-sm text-on-surface">
+                      El análisis visual no pudo completarse por una demora en el servicio de IA. Esto suele
+                      ser temporal.
+                    </p>
+                    {visual.error && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-xs text-on-surface-variant">
+                          Detalle técnico
+                        </summary>
+                        <p className="mt-1 text-xs text-on-surface-variant">{visual.error}</p>
+                      </details>
+                    )}
+                  </div>
+                  {onRetryVisual && (
+                    <div className="flex flex-col gap-1.5">
+                      <button
+                        type="button"
+                        onClick={onRetryVisual}
+                        disabled={visualRetrying}
+                        className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest/60 px-3.5 py-2 text-sm font-medium text-on-surface transition-all hover:border-primary/50 hover:bg-primary hover:text-on-primary disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span
+                          className={`material-symbols-outlined text-[18px] ${visualRetrying ? 'animate-spin' : ''}`}
+                        >
+                          refresh
+                        </span>
+                        {visualRetrying ? 'Reintentando…' : 'Reintentar'}
+                      </button>
+                      {visualRetryError && <p className="text-xs text-error">{visualRetryError}</p>}
+                    </div>
+                  )}
+                </div>
               )}
             </section>
           )}

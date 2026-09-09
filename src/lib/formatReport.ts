@@ -26,9 +26,11 @@ export function formatDiscrepancy(d: SemanticDiscrepancy): string {
 }
 
 export function formatVisualAnalysis(visual: VisualVerdict): string {
-  return visual.available
-    ? ['Análisis visual', `Estado: ${visual.status}`, visual.findings].filter(Boolean).join('\n\n')
-    : `Análisis visual\nNo disponible: ${visual.error}`
+  if (visual.available) {
+    return ['Análisis visual', `Estado: ${visual.status}`, visual.findings].filter(Boolean).join('\n\n')
+  }
+  const detail = visual.error ? `\nDetalle técnico: ${visual.error}` : ''
+  return `Análisis visual\nNo disponible: el análisis visual no pudo completarse por una demora en el servicio de IA. Esto suele ser temporal; intenta nuevamente en unos momentos.${detail}`
 }
 
 export function formatComparisonResult(result: ComparisonResult): string {

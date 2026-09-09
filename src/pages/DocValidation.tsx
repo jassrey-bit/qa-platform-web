@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { createComparison, getComparison } from '../api/docValidation'
+import { createComparison, getComparison, retryVisualAnalysis, type VisualVerdict } from '../api/docValidation'
 import { ComparisonReport } from '../components/ComparisonReport'
 import { FileDropzone } from '../components/FileDropzone'
 import { LoadingBar } from '../components/LoadingBar'
@@ -17,6 +17,9 @@ export function DocValidation() {
   const [hideVariableFills, setHideVariableFills] = useState(defaults.hideVariableFillsByDefault)
   const [jobId, setJobId] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [visualOverride, setVisualOverride] = useState<VisualVerdict | null>(null)
+  const [visualRetrying, setVisualRetrying] = useState(false)
+  const [visualRetryError, setVisualRetryError] = useState<string | null>(null)
 
   useEffect(() => {
     const rerunJobId = searchParams.get('job')
@@ -31,12 +34,28 @@ export function DocValidation() {
     e.preventDefault()
     if (!actual || !expected) return
     setSubmitError(null)
+    setVisualOverride(null)
+    setVisualRetryError(null)
     setJobId(null)
     try {
       const { job_id } = await createComparison(actual, expected, { enableVisual, hideVariableFills })
       setJobId(job_id)
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function handleRetryVisual() {
+    if (!jobId) return
+    setVisualRetrying(true)
+    setVisualRetryError(null)
+    try {
+      const updated = await retryVisualAnalysis(jobId)
+      if (updated.status === 'done') setVisualOverride(updated.result.visual)
+    } catch (e) {
+      setVisualRetryError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setVisualRetrying(false)
     }
   }
 
@@ -118,11 +137,14 @@ export function DocValidation() {
 
       {job?.status === 'done' && (
         <ComparisonReport
-          result={job.result}
+          result={visualOverride ? { ...job.result, visual: visualOverride } : job.result}
           jobId={job.job_id}
           pages={job.pages}
           expectedFilename={expected?.name ?? job.result.expected_path.split(/[\\/]/).pop() ?? 'Esperado'}
           actualFilename={actual?.name ?? job.result.actual_path.split(/[\\/]/).pop() ?? 'Actual'}
+          onRetryVisual={handleRetryVisual}
+          visualRetrying={visualRetrying}
+          visualRetryError={visualRetryError}
         />
       )}
 

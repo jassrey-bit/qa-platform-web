@@ -104,6 +104,14 @@ export async function getComparison(jobId: string): Promise<JobStatusResponse> {
   return response.json()
 }
 
+export async function retryVisualAnalysis(jobId: string): Promise<JobStatusResponse> {
+  const response = await fetch(`${BASE_URL}/comparisons/${jobId}/visual/retry`, { method: 'POST' })
+  if (!response.ok) {
+    throw new Error(`No se pudo reintentar el análisis visual (HTTP ${response.status})`)
+  }
+  return response.json()
+}
+
 export function getComparisonPageUrl(jobId: string, kind: 'actual' | 'expected', pageNum: number): string {
   return `${BASE_URL}/comparisons/${jobId}/pages/${kind}/${pageNum}`
 }
