@@ -76,11 +76,15 @@ export async function loadDocWithPages(url: string): Promise<LoadedDoc> {
   return { doc, pages }
 }
 
-function findFragmentRects(index: PageTextIndex, fragment: string): HighlightRect[] {
+function findFragmentRects(
+  index: PageTextIndex,
+  fragment: string,
+  fromIndex = 0,
+): { rects: HighlightRect[]; endIdx: number } | null {
   const needle = normalize(fragment)
-  if (!needle) return []
-  const idx = index.joined.indexOf(needle)
-  if (idx === -1) return []
+  if (!needle) return null
+  const idx = index.joined.indexOf(needle, fromIndex)
+  if (idx === -1) return null
   const endIdx = idx + needle.length
 
   const rects: HighlightRect[] = []
@@ -94,7 +98,7 @@ function findFragmentRects(index: PageTextIndex, fragment: string): HighlightRec
     const height = item.height || Math.hypot(item.transform[2], item.transform[3]) || 10
     rects.push(_toViewportRect(index, x, y, width, height))
   }
-  return rects
+  return { rects, endIdx }
 }
 
 // El PageTextIndex no guarda el objeto `PageViewport` completo (no es serializable
@@ -153,10 +157,31 @@ export function groupDiffFragments(ops: DiffOp[], type: 'removed' | 'added'): st
 function findFragmentAcrossPages(
   pages: PageTextIndex[],
   fragment: string,
+  cursors: number[],
 ): { pageIndex: number; rects: HighlightRect[] } | null {
+  // Primero intenta continuar desde donde quedó la última coincidencia en
+  // cada página: cuando el mismo texto se repite varias veces (p.ej. tres
+  // "(No Aplica)" en la misma página, uno por cada firma), una búsqueda que
+  // siempre arranca desde el principio resolvería las tres al mismo primer
+  // resultado. Como las discrepancias se procesan en el mismo orden en que
+  // aparece el contenido en el documento, avanzar el cursor por página
+  // desambigua repeticiones sin necesitar más contexto.
   for (let i = 0; i < pages.length; i++) {
-    const rects = findFragmentRects(pages[i], fragment)
-    if (rects.length > 0) return { pageIndex: i, rects }
+    const found = findFragmentRects(pages[i], fragment, cursors[i] ?? 0)
+    if (found && found.rects.length > 0) {
+      cursors[i] = found.endIdx
+      return { pageIndex: i, rects: found.rects }
+    }
+  }
+  // Red de seguridad: si no hubo match continuando el cursor (p.ej. el
+  // fragmento aparece antes del punto donde íbamos), reintenta desde el
+  // principio de cada página.
+  for (let i = 0; i < pages.length; i++) {
+    const found = findFragmentRects(pages[i], fragment, 0)
+    if (found && found.rects.length > 0) {
+      cursors[i] = found.endIdx
+      return { pageIndex: i, rects: found.rects }
+    }
   }
   return null
 }
@@ -168,11 +193,12 @@ export function computeHighlights(
   color: 'red' | 'green',
 ): Highlight[] {
   const highlights: Highlight[] = []
+  const cursors = new Array(pages.length).fill(0)
   discrepancies.forEach((d, di) => {
     const ops = diffWords(d.expected_text, d.actual_text)
     const fragments = groupDiffFragments(ops, side === 'expected' ? 'removed' : 'added')
     fragments.forEach((fragment, fi) => {
-      const found = findFragmentAcrossPages(pages, fragment)
+      const found = findFragmentAcrossPages(pages, fragment, cursors)
       if (!found) return
       const page = pages[found.pageIndex]
       highlights.push({
