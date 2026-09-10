@@ -1,9 +1,16 @@
-import type { ComparisonResult, SemanticDiscrepancy, Severity, VisualVerdict } from '../api/docValidation'
+import type { ComparisonResult, DiscoveryMethod, SemanticDiscrepancy, Severity, VisualVerdict } from '../api/docValidation'
 
 const SEVERITY_LABELS: Record<Severity, string> = {
   CRITICO: 'Crítico',
   AVISO: 'Aviso',
   INFO: 'Info',
+}
+
+export const DISCOVERY_METHOD_LABELS: Record<DiscoveryMethod, string> = {
+  toc: 'Tabla de contenido del documento',
+  heuristic: 'Detección automática por formato (negrita/centrado)',
+  ai: 'Análisis con inteligencia artificial',
+  none: 'Sin secciones detectadas',
 }
 
 export function formatDiscrepancy(d: SemanticDiscrepancy): string {
@@ -47,7 +54,7 @@ export function formatComparisonResult(result: ComparisonResult): string {
   sections.push(
     [
       'Estructura',
-      `Puntaje: ${structural.score.toFixed(1)} · Descubierto por: ${structural.discovery_method}`,
+      `Puntaje: ${structural.score.toFixed(1)} · Descubierto por: ${DISCOVERY_METHOD_LABELS[structural.discovery_method]}`,
       structural.missing_sections.length > 0
         ? `Secciones faltantes: ${structural.missing_sections.join(', ')}`
         : null,

@@ -5,7 +5,7 @@ import { DiffText } from './DiffText'
 import { PageCompareViewer } from './PageCompareViewer'
 import { SeverityBadge } from './SeverityBadge'
 import { VisualAnalysis } from './VisualAnalysis'
-import { formatComparisonResult, formatDiscrepancy, formatVisualAnalysis } from '../lib/formatReport'
+import { DISCOVERY_METHOD_LABELS, formatComparisonResult, formatDiscrepancy, formatVisualAnalysis } from '../lib/formatReport'
 import { diffWords } from '../lib/textDiff'
 
 interface ComparisonReportProps {
@@ -121,7 +121,7 @@ export function ComparisonReport({
                   <span className="text-sm font-medium text-on-surface">Estructura del documento</span>
                 </div>
                 <p className="mt-1 text-xs text-on-surface-variant">
-                  Descubierto por: {structural.discovery_method}
+                  Descubierto por: {DISCOVERY_METHOD_LABELS[structural.discovery_method]}
                 </p>
                 {structural.missing_sections.length > 0 && (
                   <p className="mt-1 text-xs text-on-surface-variant">
