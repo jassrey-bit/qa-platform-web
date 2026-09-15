@@ -1,10 +1,10 @@
 import { useId, useRef, useState } from 'react'
 
-const ACCEPTED_EXTENSIONS = ['.pdf', '.docx']
+const DEFAULT_ACCEPTED_EXTENSIONS = ['.pdf', '.docx']
 
-function hasAcceptedExtension(file: File): boolean {
+function hasAcceptedExtension(file: File, acceptedExtensions: string[]): boolean {
   const name = file.name.toLowerCase()
-  return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext))
+  return acceptedExtensions.some((ext) => name.endsWith(ext))
 }
 
 function formatFileSize(bytes: number): string {
@@ -18,20 +18,24 @@ export function FileDropzone({
   file,
   onChange,
   compact = false,
+  acceptedExtensions = DEFAULT_ACCEPTED_EXTENSIONS,
 }: {
   label: string
   file: File | null
   onChange: (file: File | null) => void
   compact?: boolean
+  acceptedExtensions?: string[]
 }) {
   const inputId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const acceptAttr = acceptedExtensions.join(',')
+  const hint = acceptedExtensions.map((ext) => ext.replace('.', '').toUpperCase()).join(' o ')
 
   function acceptFile(candidate: File) {
-    if (!hasAcceptedExtension(candidate)) {
-      setError('Solo se aceptan archivos PDF o DOCX.')
+    if (!hasAcceptedExtension(candidate, acceptedExtensions)) {
+      setError(`Solo se aceptan archivos ${hint}.`)
       return
     }
     setError(null)
@@ -80,7 +84,7 @@ export function FileDropzone({
           ref={inputRef}
           id={inputId}
           type="file"
-          accept=".pdf,.docx"
+          accept={acceptAttr}
           onChange={handleInputChange}
           className="hidden"
         />
@@ -132,7 +136,7 @@ export function FileDropzone({
           ref={inputRef}
           id={inputId}
           type="file"
-          accept=".pdf,.docx"
+          accept={acceptAttr}
           onChange={handleInputChange}
           className="hidden"
         />
@@ -158,7 +162,7 @@ export function FileDropzone({
             <span className="text-on-surface-variant">
               Arrastra un archivo aquí o <span className="text-primary">selecciónalo</span>
             </span>
-            <span className="text-xs text-on-surface-variant/70">PDF o DOCX</span>
+            <span className="text-xs text-on-surface-variant/70">{hint}</span>
           </>
         )}
       </div>

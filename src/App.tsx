@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { Header } from './components/Header'
 import { ThemeProvider } from './hooks/useTheme'
 import { Ajustes } from './pages/Ajustes'
+import { ApiValidation } from './pages/ApiValidation'
 import { Dashboard } from './pages/Dashboard'
 import { DocValidation } from './pages/DocValidation'
 import { Reportes } from './pages/Reportes'
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/doc-validation" element={<DocValidation />} />
+            <Route path="/api-validation" element={<ApiValidation />} />
             <Route path="/reportes" element={<Reportes />} />
             <Route path="/ajustes" element={<Ajustes />} />
           </Routes>

@@ -11,9 +11,9 @@ const MODULES = [
   {
     name: 'Validación de API',
     description: 'Pruebas de respuestas de API y cálculos financieros (api-qa-framework).',
-    path: '#',
+    path: '/api-validation',
     icon: 'api',
-    available: false,
+    available: true,
   },
   {
     name: 'Automatización E2E',
