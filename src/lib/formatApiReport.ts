@@ -1,5 +1,5 @@
 import type { ComparisonCaseResult, JobStatusResponse, RegressionCaseResult } from '../api/apiValidation'
-import { dedupeDifferences, humanizeDiffPath } from './apiDiffFormat'
+import { dedupeDifferences, humanizeDiffPath, parseStructuralDiff } from './apiDiffFormat'
 
 type DoneJob = Extract<JobStatusResponse, { status: 'done' }>
 
@@ -10,8 +10,12 @@ function formatRegressionCase(c: RegressionCaseResult, i: number): string {
     lines.push('Reglas financieras violadas:')
     c.financial_violations.forEach((v) => lines.push(`  - ${v}`))
   }
-  if (Object.keys(c.structural_diff).length > 0) {
-    lines.push(`Diferencias estructurales: ${JSON.stringify(c.structural_diff)}`)
+  const structuralRows = parseStructuralDiff(c.structural_diff)
+  if (structuralRows.length > 0) {
+    lines.push('Diferencias estructurales:')
+    structuralRows.forEach((r) =>
+      lines.push(`  - ${r.label} (${r.changeLabel}): esperado=${JSON.stringify(r.before)} | obtenido=${JSON.stringify(r.after)}`),
+    )
   }
   return lines.join('\n')
 }

@@ -3,6 +3,7 @@ import { formatApiReport } from '../lib/formatApiReport'
 import { ApiDiffViewer } from './ApiDiffViewer'
 import { CopyButton } from './CopyButton'
 import { RunStatusBadge } from './RunStatusBadge'
+import { StructuralDiffViewer } from './StructuralDiffViewer'
 
 type DoneJob = Extract<JobStatusResponse, { status: 'done' }>
 
@@ -30,12 +31,10 @@ function RegressionCaseCard({ result }: { result: RegressionCaseResult }) {
         </div>
       )}
       {Object.keys(result.structural_diff).length > 0 && (
-        <details className="rounded-lg border border-outline-variant/20 bg-surface-container p-3 text-xs">
-          <summary className="cursor-pointer font-medium text-on-surface">Diferencias estructurales</summary>
-          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-on-surface-variant">
-            {JSON.stringify(result.structural_diff, null, 2)}
-          </pre>
-        </details>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-on-surface-variant">Diferencias estructurales</p>
+          <StructuralDiffViewer diff={result.structural_diff} />
+        </div>
       )}
     </div>
   )
