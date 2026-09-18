@@ -81,6 +81,8 @@ export interface RunListFilters {
 export interface CreateRunOptions {
   caseIds?: string[]
   customCases?: CustomCase[]
+  toleranceDecimals?: number
+  toleranceFields?: string[]
 }
 
 export async function listFixtures(): Promise<FixtureCase[]> {
@@ -112,6 +114,8 @@ export async function createRun(
       mode,
       case_ids: options.caseIds ?? null,
       custom_cases: options.customCases ?? null,
+      tolerance_decimals: options.toleranceDecimals ?? null,
+      tolerance_fields: options.toleranceFields ?? null,
     }),
   })
   if (!response.ok) {

@@ -13,17 +13,26 @@ import { ApiTestReport } from '../components/ApiTestReport'
 import { FileDropzone } from '../components/FileDropzone'
 import { LoadingBar } from '../components/LoadingBar'
 import { useJobPolling } from '../hooks/useJobPolling'
+import { getApiValidationSettings, TOLERANCE_FIELD_OPTIONS } from '../lib/apiValidationSettings'
 
 export function ApiValidation() {
   const [searchParams] = useSearchParams()
+  const defaults = getApiValidationSettings()
+  const toleranceFieldsLabel =
+    defaults.toleranceFields.length === 0
+      ? 'ningún campo (sin tolerancia)'
+      : defaults.toleranceFields
+          .map((key) => TOLERANCE_FIELD_OPTIONS.find((o) => o.key === key)?.label ?? key)
+          .join(', ')
 
-  const [mode, setMode] = useState<RunMode>('regression')
+  const [mode, setMode] = useState<RunMode>(defaults.defaultMode)
   const [fixtures, setFixtures] = useState<FixtureCase[]>([])
   const [fixturesError, setFixturesError] = useState<string | null>(null)
   const [fixtureFilter, setFixtureFilter] = useState('')
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([])
 
-  const [includeCustomCase, setIncludeCustomCase] = useState(false)
+  const [includeCustomCase, setIncludeCustomCase] = useState(defaults.expandCustomCaseByDefault)
+  const [toleranceDecimals, setToleranceDecimals] = useState(defaults.toleranceDecimals)
   const [customCaseId, setCustomCaseId] = useState('')
   const [customPayloadFile, setCustomPayloadFile] = useState<File | null>(null)
   const [customPayloadText, setCustomPayloadText] = useState('')
@@ -126,6 +135,8 @@ export function ApiValidation() {
       const { job_id } = await createRun(mode, {
         caseIds: selectedCaseIds.length > 0 ? selectedCaseIds : undefined,
         customCases,
+        toleranceDecimals,
+        toleranceFields: defaults.toleranceFields,
       })
       setJobId(job_id)
     } catch (err) {
@@ -161,21 +172,37 @@ export function ApiValidation() {
         onSubmit={handleSubmit}
         className="flex flex-col gap-4 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-4 backdrop-blur-2xl"
       >
-        <div className="flex flex-wrap items-center gap-2">
-          {(['regression', 'comparison'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                mode === m
-                  ? 'bg-primary text-on-primary shadow-lg shadow-primary/25'
-                  : 'border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high'
-              }`}
-            >
-              {m === 'regression' ? 'Regresión (vs API bajo prueba)' : 'Comparación PROD vs DEV'}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {(['regression', 'comparison'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                  mode === m
+                    ? 'bg-primary text-on-primary shadow-lg shadow-primary/25'
+                    : 'border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                {m === 'regression' ? 'Regresión (vs API bajo prueba)' : 'Comparación'}
+              </button>
+            ))}
+          </div>
+          <label
+            className="flex items-center gap-2 text-xs text-on-surface-variant"
+            title={`Decimales que deben coincidir en: ${toleranceFieldsLabel} (el resto de los campos siempre se compara exacto). Más alto = más exigente; 0 solo compara la parte entera. Los campos se eligen en Ajustes.`}
+          >
+            Decimales a comparar ({defaults.toleranceFields.length || 'ningún campo'})
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={toleranceDecimals}
+              onChange={(e) => setToleranceDecimals(Number(e.target.value))}
+              className="w-16 rounded-lg border border-outline-variant/40 bg-surface-container-low px-2 py-1.5 text-sm text-on-surface"
+            />
+          </label>
         </div>
 
         <div className="flex flex-col gap-2">

@@ -45,7 +45,7 @@ export function formatApiReport(job: DoneJob): string {
   const header = [
     `Resultado: ${job.summary.failed === 0 ? 'Aprobado' : 'Con fallos'}`,
     `${job.summary.total} caso(s) — ${job.summary.passed} aprobado(s), ${job.summary.failed} con fallos`,
-    `Modo: ${job.mode === 'regression' ? 'Regresión' : 'Comparación PROD vs DEV'}`,
+    `Modo: ${job.mode === 'regression' ? 'Regresión' : 'Comparación'}`,
   ].join('\n')
 
   const body =
