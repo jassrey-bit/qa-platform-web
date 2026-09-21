@@ -10,7 +10,7 @@ const MODULES = [
   },
   {
     name: 'Validación de API',
-    description: 'Pruebas de respuestas de API y cálculos financieros (api-qa-framework).',
+    description: 'Pruebas de respuestas de API y cálculos financieros.',
     path: '/api-validation',
     icon: 'api',
     available: true,

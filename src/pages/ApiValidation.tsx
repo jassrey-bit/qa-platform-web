@@ -185,7 +185,7 @@ export function ApiValidation() {
                     : 'border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
-                {m === 'regression' ? 'Regresión (vs API bajo prueba)' : 'Comparación'}
+                {m === 'regression' ? 'Regresión' : 'Comparación'}
               </button>
             ))}
           </div>
