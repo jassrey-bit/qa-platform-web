@@ -35,7 +35,10 @@ export function ApiValidation() {
   const [toleranceDecimals, setToleranceDecimals] = useState(defaults.toleranceDecimals)
   const [customCaseId, setCustomCaseId] = useState('')
   const [customPayloadFile, setCustomPayloadFile] = useState<File | null>(null)
+  const [readingCustomPayloadFile, setReadingCustomPayloadFile] = useState(false)
   const [customPayloadText, setCustomPayloadText] = useState('')
+  const [customExpectedFile, setCustomExpectedFile] = useState<File | null>(null)
+  const [readingCustomExpectedFile, setReadingCustomExpectedFile] = useState(false)
   const [customExpectedText, setCustomExpectedText] = useState('')
 
   const [jobId, setJobId] = useState<string | null>(null)
@@ -80,10 +83,26 @@ export function ApiValidation() {
   async function handleCustomFileChange(file: File | null) {
     setCustomPayloadFile(file)
     if (!file) return
+    setReadingCustomPayloadFile(true)
     try {
       setCustomPayloadText(await file.text())
     } catch {
       setSubmitError('No se pudo leer el archivo seleccionado.')
+    } finally {
+      setReadingCustomPayloadFile(false)
+    }
+  }
+
+  async function handleCustomExpectedFileChange(file: File | null) {
+    setCustomExpectedFile(file)
+    if (!file) return
+    setReadingCustomExpectedFile(true)
+    try {
+      setCustomExpectedText(await file.text())
+    } catch {
+      setSubmitError('No se pudo leer el archivo seleccionado.')
+    } finally {
+      setReadingCustomExpectedFile(false)
     }
   }
 
@@ -294,7 +313,16 @@ export function ApiValidation() {
 
               {mode === 'regression' && (
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-on-surface-variant">Respuesta esperada (JSON)</label>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-xs font-medium text-on-surface-variant">Respuesta esperada (JSON)</label>
+                    <FileDropzone
+                      compact
+                      label="Cargar respuesta"
+                      file={customExpectedFile}
+                      onChange={handleCustomExpectedFileChange}
+                      acceptedExtensions={['.json']}
+                    />
+                  </div>
                   <textarea
                     value={customExpectedText}
                     onChange={(e) => setCustomExpectedText(e.target.value)}
@@ -311,10 +339,14 @@ export function ApiValidation() {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={polling}
+            disabled={polling || readingCustomPayloadFile || readingCustomExpectedFile}
             className="rounded-xl bg-primary px-5 py-2.5 font-medium text-on-primary shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {polling ? 'Ejecutando…' : 'Ejecutar corrida'}
+            {polling
+              ? 'Ejecutando…'
+              : readingCustomPayloadFile || readingCustomExpectedFile
+                ? 'Leyendo archivo…'
+                : 'Ejecutar corrida'}
           </button>
         </div>
       </form>
