@@ -5,7 +5,7 @@ const MODULES = [
     name: 'Validación de documentos',
     description: 'Compara documentos generados (PDF/DOCX) contra su plantilla esperada.',
     path: '/doc-validation',
-    icon: 'description',
+    icon: 'document_scanner',
     available: true,
   },
   {
@@ -19,7 +19,7 @@ const MODULES = [
     name: 'Automatización E2E',
     description: 'Suite de pruebas end-to-end con Cucumber sobre la plataforma.',
     path: '#',
-    icon: 'smart_toy',
+    icon: 'robot_2',
     available: false,
   },
 ]

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ToggleSwitch } from '../components/ToggleSwitch'
 import type { RunMode } from '../api/apiValidation'
 import {
   getApiValidationSettings,
   saveApiValidationSettings,
+  MAX_TOLERANCE_DECIMALS,
   TOLERANCE_FIELD_OPTIONS,
   type ApiValidationSettings,
 } from '../lib/apiValidationSettings'
@@ -13,21 +14,129 @@ import {
   type DocValidationSettings,
 } from '../lib/docValidationSettings'
 
+const RUN_MODES: { value: RunMode; label: string; icon: string }[] = [
+  { value: 'regression', label: 'Regresión', icon: 'history' },
+  { value: 'comparison', label: 'Comparación', icon: 'compare_arrows' },
+]
+
+const DECIMAL_OPTIONS = Array.from({ length: MAX_TOLERANCE_DECIMALS + 1 }, (_, i) => i)
+
+// Compara ajustes ignorando el orden en que se activaron los campos.
+function sameSettings(a: object, b: object) {
+  const normalize = (o: object) =>
+    JSON.stringify(o, (_, v) => (Array.isArray(v) ? [...v].sort() : v))
+  return normalize(a) === normalize(b)
+}
+
+function SettingsSection({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: string
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-outline-variant/20 bg-surface-container/60 backdrop-blur-2xl">
+      <header className="flex items-center gap-4 border-b border-outline-variant/20 px-4 py-4 sm:px-6">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+          <span className="material-symbols-outlined text-[22px]">{icon}</span>
+        </div>
+        <div>
+          <h2 className="font-headline text-lg text-on-surface">{title}</h2>
+          <p className="text-sm text-on-surface-variant">{description}</p>
+        </div>
+      </header>
+      <div className="divide-y divide-outline-variant/15">{children}</div>
+    </section>
+  )
+}
+
+// Fila de tres columnas: nombre del ajuste | descripción | control.
+// En pantallas angostas las columnas se apilan.
+function SettingRow({
+  icon,
+  label,
+  htmlFor,
+  hint,
+  description,
+  children,
+  wideControl = false,
+}: {
+  icon: string
+  label: string
+  htmlFor?: string
+  hint?: ReactNode
+  description?: ReactNode
+  children: ReactNode
+  wideControl?: boolean
+}) {
+  const Label = htmlFor ? 'label' : 'span'
+  return (
+    <div
+      className={`grid gap-3 px-4 py-5 transition-colors hover:bg-surface-container-high/30 sm:px-6 lg:gap-x-8 ${
+        wideControl
+          ? 'lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]'
+          : 'lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto] lg:items-center'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="material-symbols-outlined mt-0.5 text-[20px] text-primary/80">{icon}</span>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={htmlFor} className={`font-medium text-on-surface ${htmlFor ? 'cursor-pointer' : ''}`}>
+            {label}
+          </Label>
+          {hint}
+        </div>
+      </div>
+      {wideControl ? (
+        <div className="flex flex-col gap-3 pl-8 lg:pl-0">
+          {description && <p className="text-sm leading-relaxed text-on-surface-variant">{description}</p>}
+          {children}
+        </div>
+      ) : (
+        <>
+          <p className="pl-8 text-sm leading-relaxed text-on-surface-variant lg:pl-0">{description}</p>
+          <div className="flex items-center pl-8 lg:justify-end lg:pl-0">{children}</div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function Ajustes() {
-  const [settings, setSettings] = useState<DocValidationSettings>(getDocValidationSettings)
-  const [apiSettings, setApiSettings] = useState<ApiValidationSettings>(getApiValidationSettings)
+  const [savedDoc, setSavedDoc] = useState<DocValidationSettings>(getDocValidationSettings)
+  const [savedApi, setSavedApi] = useState<ApiValidationSettings>(getApiValidationSettings)
+  const [settings, setSettings] = useState<DocValidationSettings>(savedDoc)
+  const [apiSettings, setApiSettings] = useState<ApiValidationSettings>(savedApi)
   const [saved, setSaved] = useState(false)
+
+  const dirty = !sameSettings(settings, savedDoc) || !sameSettings(apiSettings, savedApi)
+  const noToleranceFields = apiSettings.toleranceFields.length === 0
+
+  // Avisa al cerrar o recargar la pestaña con cambios sin guardar.
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
 
   function handleSave() {
     saveDocValidationSettings(settings)
     saveApiValidationSettings(apiSettings)
+    setSavedDoc(settings)
+    setSavedApi(apiSettings)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
   function handleDiscard() {
-    setSettings(getDocValidationSettings())
-    setApiSettings(getApiValidationSettings())
+    setSettings(savedDoc)
+    setApiSettings(savedApi)
   }
 
   function toggleToleranceField(key: string) {
@@ -40,184 +149,186 @@ export function Ajustes() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-gutter-xl p-layout-margin">
-      <div>
-        <span className="rounded bg-primary/10 px-2 py-0.5 font-code text-xs uppercase tracking-wider text-primary">
-          Ajustes
-        </span>
-        <h1 className="mt-2 font-headline text-3xl font-bold tracking-tight text-on-surface">
-          Ajustes de validación
-        </h1>
-        <p className="mt-1 max-w-2xl text-on-surface-variant">
-          Define los valores por defecto que se usarán al crear una nueva validación de documentos o una nueva
-          corrida de API.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-6 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-4 backdrop-blur-2xl sm:gap-8 sm:p-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20">
-              <span className="material-symbols-outlined text-[24px]">rule_settings</span>
-            </div>
-            <div>
-              <h2 className="font-headline text-lg text-on-surface">Validación de documentos</h2>
-              <p className="text-sm text-on-surface-variant">
-                Configura las reglas de análisis visual y omisión de variables.
-              </p>
-            </div>
-          </div>
-          <span className="self-start rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-code text-xs text-primary sm:self-auto">
-            Activo
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-gutter-xl p-layout-margin">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <span className="rounded bg-primary/10 px-2 py-0.5 font-code text-xs uppercase tracking-wider text-primary">
+            Ajustes
           </span>
+          <h1 className="mt-2 font-headline text-3xl font-bold tracking-tight text-on-surface">
+            Ajustes de validación
+          </h1>
+          <p className="mt-1 max-w-2xl text-on-surface-variant">
+            Define los valores por defecto que se usarán al crear una nueva validación de documentos o una nueva
+            corrida de API.
+          </p>
         </div>
 
-        <div className="h-px w-full bg-outline-variant/20" />
-
-        <div className="flex flex-col gap-4 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40 sm:flex-row sm:items-start sm:justify-between sm:gap-gutter-xl">
-          <div className="flex max-w-md flex-col gap-1">
-            <label htmlFor="toggle-visual" className="cursor-pointer font-medium text-on-surface">
-              Incluir análisis visual por defecto
-            </label>
-            <p className="text-sm leading-relaxed text-on-surface-variant">
-              Compara automáticamente píxeles y diferencias de renderizado visual en cada ejecución.
-            </p>
-          </div>
-          <div className="flex items-center sm:h-full sm:pt-1">
-            <ToggleSwitch
-              id="toggle-visual"
-              checked={settings.enableVisualByDefault}
-              onChange={(checked) => setSettings((s) => ({ ...s, enableVisualByDefault: checked }))}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40 sm:flex-row sm:items-start sm:justify-between sm:gap-gutter-xl">
-          <div className="flex max-w-md flex-col gap-1">
-            <label htmlFor="toggle-variables" className="cursor-pointer font-medium text-on-surface">
-              Ocultar rellenos variables por defecto
-            </label>
-            <p className="text-sm leading-relaxed text-on-surface-variant">
-              Omite marcas de tiempo y campos dinámicos para evitar falsos positivos en las comparaciones.
-            </p>
-          </div>
-          <div className="flex items-center sm:h-full sm:pt-1">
-            <ToggleSwitch
-              id="toggle-variables"
-              checked={settings.hideVariableFillsByDefault}
-              onChange={(checked) => setSettings((s) => ({ ...s, hideVariableFillsByDefault: checked }))}
-            />
-          </div>
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-3 sm:w-auto">
+          {dirty && (
+            <span className="flex w-full items-center gap-1.5 text-xs text-on-surface-variant sm:w-auto">
+              <span className="h-2 w-2 rounded-full bg-primary" />
+              Cambios sin guardar
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleDiscard}
+            disabled={!dirty}
+            className="flex-1 rounded-xl border border-outline-variant/30 px-4 py-2 text-sm sm:flex-none text-on-surface-variant transition-all hover:bg-surface-container-high/60 hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            Descartar
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!dirty && !saved}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-primary-fixed/30 bg-primary px-5 sm:flex-none py-2 text-sm font-medium text-on-primary shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+          >
+            <span className="material-symbols-outlined text-[18px]">{saved ? 'check' : 'save'}</span>
+            {saved ? '¡Guardado!' : 'Guardar cambios'}
+          </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-4 backdrop-blur-2xl sm:gap-8 sm:p-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20">
-              <span className="material-symbols-outlined text-[24px]">api</span>
-            </div>
-            <div>
-              <h2 className="font-headline text-lg text-on-surface">Validación de API</h2>
-              <p className="text-sm text-on-surface-variant">
-                Configura el modo de corrida, el caso personalizado y la tolerancia numérica por defecto.
-              </p>
-            </div>
-          </div>
-          <span className="self-start rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-code text-xs text-primary sm:self-auto">
-            Activo
-          </span>
-        </div>
+      <SettingsSection
+        icon="document_scanner"
+        title="Validación de documentos"
+        description="Configura las reglas de análisis visual y omisión de variables."
+      >
+        <SettingRow
+          icon="image_search"
+          label="Incluir análisis visual por defecto"
+          htmlFor="toggle-visual"
+          description="Compara automáticamente píxeles y diferencias de renderizado visual en cada ejecución."
+        >
+          <ToggleSwitch
+            id="toggle-visual"
+            checked={settings.enableVisualByDefault}
+            onChange={(checked) => setSettings((s) => ({ ...s, enableVisualByDefault: checked }))}
+          />
+        </SettingRow>
 
-        <div className="h-px w-full bg-outline-variant/20" />
+        <SettingRow
+          icon="visibility_off"
+          label="Ocultar rellenos variables por defecto"
+          htmlFor="toggle-variables"
+          description="Omite marcas de tiempo y campos dinámicos para evitar falsos positivos en las comparaciones."
+        >
+          <ToggleSwitch
+            id="toggle-variables"
+            checked={settings.hideVariableFillsByDefault}
+            onChange={(checked) => setSettings((s) => ({ ...s, hideVariableFillsByDefault: checked }))}
+          />
+        </SettingRow>
+      </SettingsSection>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40 sm:flex-row sm:items-start sm:justify-between sm:gap-gutter-xl">
-          <div className="flex max-w-md flex-col gap-1">
-            <span className="font-medium text-on-surface">Modo de ejecución por defecto</span>
-            <p className="text-sm leading-relaxed text-on-surface-variant">
-              Modo preseleccionado al abrir la pantalla de Validación de API.
-            </p>
+      <SettingsSection
+        icon="api"
+        title="Validación de API"
+        description="Configura el modo de corrida, el caso personalizado y la tolerancia numérica por defecto."
+      >
+        <SettingRow
+          icon="alt_route"
+          label="Modo de ejecución por defecto"
+          description="Modo preseleccionado al abrir la pantalla de Validación de API."
+        >
+          <div
+            role="radiogroup"
+            aria-label="Modo de ejecución por defecto"
+            className="flex rounded-xl border border-outline-variant/30 bg-surface-container-low p-1"
+          >
+            {RUN_MODES.map((m) => {
+              const active = apiSettings.defaultMode === m.value
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setApiSettings((s) => ({ ...s, defaultMode: m.value }))}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                    active
+                      ? 'bg-primary text-on-primary shadow-md shadow-primary/25'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">{m.icon}</span>
+                  {m.label}
+                </button>
+              )
+            })}
           </div>
-          <div className="flex items-center gap-2 sm:h-full sm:pt-1">
-            {(['regression', 'comparison'] as const).map((m: RunMode) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setApiSettings((s) => ({ ...s, defaultMode: m }))}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                  apiSettings.defaultMode === m
-                    ? 'bg-primary text-on-primary shadow-lg shadow-primary/25'
-                    : 'border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high'
-                }`}
-              >
-                {m === 'regression' ? 'Regresión' : 'Comparación'}
-              </button>
-            ))}
-          </div>
-        </div>
+        </SettingRow>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40 sm:flex-row sm:items-start sm:justify-between sm:gap-gutter-xl">
-          <div className="flex max-w-md flex-col gap-1">
-            <label htmlFor="toggle-custom-case" className="cursor-pointer font-medium text-on-surface">
-              Mostrar caso personalizado por defecto
-            </label>
-            <p className="text-sm leading-relaxed text-on-surface-variant">
-              Expande el bloque de payload propio al abrir la pantalla, sin tener que activarlo cada vez.
-            </p>
-          </div>
-          <div className="flex items-center sm:h-full sm:pt-1">
-            <ToggleSwitch
-              id="toggle-custom-case"
-              checked={apiSettings.expandCustomCaseByDefault}
-              onChange={(checked) => setApiSettings((s) => ({ ...s, expandCustomCaseByDefault: checked }))}
-            />
-          </div>
-        </div>
+        <SettingRow
+          icon="data_object"
+          label="Mostrar caso personalizado por defecto"
+          htmlFor="toggle-custom-case"
+          description="Expande el bloque de payload propio al abrir la pantalla, sin tener que activarlo cada vez."
+        >
+          <ToggleSwitch
+            id="toggle-custom-case"
+            checked={apiSettings.expandCustomCaseByDefault}
+            onChange={(checked) => setApiSettings((s) => ({ ...s, expandCustomCaseByDefault: checked }))}
+          />
+        </SettingRow>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40 sm:flex-row sm:items-start sm:justify-between sm:gap-gutter-xl">
-          <div className="flex max-w-md flex-col gap-1">
-            <label htmlFor="tolerance-decimals" className="cursor-pointer font-medium text-on-surface">
-              Precisión decimal al comparar
-            </label>
-            <p className="text-sm leading-relaxed text-on-surface-variant">
-              Cantidad de decimales que deben coincidir en los campos activados abajo para considerarlos
-              iguales; el resto de los campos siempre se compara exacto. Entre más alto, más exigente: con 0
-              solo se compara la parte entera; con 2, deben coincidir hasta el segundo decimal. Evita falsos
-              positivos por redondeo sin dejar de detectar diferencias reales en los demás campos.
-            </p>
+        <SettingRow
+          icon="decimal_increase"
+          label="Precisión decimal al comparar"
+          hint={<span className="text-xs text-on-surface-variant">Aplica solo a los campos activados abajo.</span>}
+          description={
+            noToleranceFields ? (
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">info</span>
+                No hay campos activados: todos se comparan de forma exacta.
+              </span>
+            ) : (
+              'Decimales que deben coincidir para considerar iguales los valores. Con 0 solo se compara la parte entera; con 2, hasta el segundo decimal.'
+            )
+          }
+        >
+          <div
+            role="radiogroup"
+            aria-label="Precisión decimal"
+            aria-disabled={noToleranceFields}
+            title={noToleranceFields ? 'Activa al menos un campo con tolerancia para elegir la precisión' : undefined}
+            className={`flex gap-1.5 transition-opacity ${noToleranceFields ? 'opacity-40' : ''}`}
+          >
+            {DECIMAL_OPTIONS.map((n) => {
+              const active = apiSettings.toleranceDecimals === n
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  disabled={noToleranceFields}
+                  onClick={() => setApiSettings((s) => ({ ...s, toleranceDecimals: n }))}
+                  className={`h-9 w-9 rounded-lg font-code text-sm transition-all disabled:cursor-not-allowed ${
+                    active
+                      ? 'bg-primary text-on-primary shadow-md shadow-primary/25 disabled:shadow-none'
+                      : 'border border-outline-variant/40 text-on-surface-variant enabled:hover:bg-surface-container-high'
+                  }`}
+                >
+                  {n}
+                </button>
+              )
+            })}
           </div>
-          <div className="flex items-center sm:h-full sm:pt-1">
-            <input
-              id="tolerance-decimals"
-              type="number"
-              min={0}
-              max={10}
-              value={apiSettings.toleranceDecimals}
-              onChange={(e) =>
-                setApiSettings((s) => ({ ...s, toleranceDecimals: Number(e.target.value) }))
-              }
-              className="w-20 rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-sm text-on-surface"
-            />
-          </div>
-        </div>
+        </SettingRow>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-transparent p-4 transition-all hover:border-outline-variant/10 hover:bg-surface-container-high/40">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-col gap-1">
-              <span className="font-medium text-on-surface">Campos con tolerancia decimal</span>
-              <p className="text-sm leading-relaxed text-on-surface-variant">
-                Activa los campos numéricos a los que se les aplicará la precisión de arriba. Los que dejes
-                apagados siempre se comparan de forma exacta, sin importar el valor de "Precisión decimal".
-              </p>
-            </div>
+        <SettingRow
+          icon="checklist"
+          label="Campos con tolerancia decimal"
+          wideControl
+          hint={
             <div className="flex items-center gap-2 text-xs">
               <button
                 type="button"
                 onClick={() =>
-                  setApiSettings((s) => ({
-                    ...s,
-                    toleranceFields: TOLERANCE_FIELD_OPTIONS.map((o) => o.key),
-                  }))
+                  setApiSettings((s) => ({ ...s, toleranceFields: TOLERANCE_FIELD_OPTIONS.map((o) => o.key) }))
                 }
                 className="text-primary hover:underline"
               >
@@ -232,8 +343,10 @@ export function Ajustes() {
                 Desactivar todos
               </button>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
+          }
+          description={`Activa los campos numéricos a los que se aplica la precisión de arriba (${apiSettings.toleranceFields.length} de ${TOLERANCE_FIELD_OPTIONS.length}). Los apagados siempre se comparan de forma exacta.`}
+        >
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {TOLERANCE_FIELD_OPTIONS.map((field) => {
               const active = apiSettings.toleranceFields.includes(field.key)
               return (
@@ -242,37 +355,27 @@ export function Ajustes() {
                   type="button"
                   aria-pressed={active}
                   onClick={() => toggleToleranceField(field.key)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                  className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all ${
                     active
-                      ? 'border border-primary/30 bg-primary/10 text-primary'
-                      : 'border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container-high'
+                      ? 'border-primary/30 bg-primary/10 text-primary'
+                      : 'border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high'
                   }`}
                 >
-                  {field.label}
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">
+                      {active ? 'check_circle' : 'radio_button_unchecked'}
+                    </span>
+                    {field.label}
+                  </span>
+                  <span className="font-code text-[11px] opacity-80">
+                    {active ? `${apiSettings.toleranceDecimals} dec.` : 'exacto'}
+                  </span>
                 </button>
               )
             })}
           </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col-reverse items-stretch gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
-        <button
-          type="button"
-          onClick={handleDiscard}
-          className="rounded-xl border border-transparent px-5 py-2.5 text-on-surface-variant transition-all hover:border-outline-variant/20 hover:bg-surface-container-high/60 hover:text-on-surface"
-        >
-          Descartar
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="flex items-center justify-center gap-2 rounded-xl border border-primary-fixed/30 bg-primary px-6 py-2.5 font-medium text-on-primary shadow-lg shadow-primary/25 transition-all hover:opacity-90"
-        >
-          <span className="material-symbols-outlined text-[18px]">{saved ? 'check' : 'save'}</span>
-          {saved ? '¡Guardado!' : 'Guardar cambios'}
-        </button>
-      </div>
+        </SettingRow>
+      </SettingsSection>
     </div>
   )
 }

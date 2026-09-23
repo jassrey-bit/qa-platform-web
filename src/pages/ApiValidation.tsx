@@ -13,7 +13,11 @@ import { ApiTestReport } from '../components/ApiTestReport'
 import { FileDropzone } from '../components/FileDropzone'
 import { LoadingBar } from '../components/LoadingBar'
 import { useJobPolling } from '../hooks/useJobPolling'
-import { getApiValidationSettings, TOLERANCE_FIELD_OPTIONS } from '../lib/apiValidationSettings'
+import {
+  getApiValidationSettings,
+  MAX_TOLERANCE_DECIMALS,
+  TOLERANCE_FIELD_OPTIONS,
+} from '../lib/apiValidationSettings'
 
 export function ApiValidation() {
   const [searchParams] = useSearchParams()
@@ -216,7 +220,7 @@ export function ApiValidation() {
             <input
               type="number"
               min={0}
-              max={10}
+              max={MAX_TOLERANCE_DECIMALS}
               value={toleranceDecimals}
               onChange={(e) => setToleranceDecimals(Number(e.target.value))}
               className="w-16 rounded-lg border border-outline-variant/40 bg-surface-container-low px-2 py-1.5 text-sm text-on-surface"

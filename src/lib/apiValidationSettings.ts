@@ -22,6 +22,10 @@ export const TOLERANCE_FIELD_OPTIONS: { key: string; label: string }[] = [
   { key: 'monto_dispuesto', label: 'Monto dispuesto' },
 ]
 
+// Más de 4 decimales no aporta en montos y tasas; valores guardados
+// antes con un máximo mayor se ajustan a este límite al leerlos.
+export const MAX_TOLERANCE_DECIMALS = 4
+
 export interface ApiValidationSettings {
   defaultMode: RunMode
   expandCustomCaseByDefault: boolean
@@ -40,7 +44,12 @@ export function getApiValidationSettings(): ApiValidationSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULTS
-    return { ...DEFAULTS, ...JSON.parse(raw) }
+    const settings: ApiValidationSettings = { ...DEFAULTS, ...JSON.parse(raw) }
+    settings.toleranceDecimals = Math.min(
+      MAX_TOLERANCE_DECIMALS,
+      Math.max(0, Math.round(Number(settings.toleranceDecimals) || 0)),
+    )
+    return settings
   } catch {
     return DEFAULTS
   }
