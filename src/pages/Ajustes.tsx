@@ -79,8 +79,8 @@ function SettingRow({
     <div
       className={`grid gap-3 px-4 py-5 transition-colors hover:bg-surface-container-high/30 sm:px-6 lg:gap-x-8 ${
         wideControl
-          ? 'lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]'
-          : 'lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto] lg:items-center'
+          ? 'lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]'
+          : 'lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_auto] lg:items-center'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -99,7 +99,7 @@ function SettingRow({
         </div>
       ) : (
         <>
-          <p className="pl-8 text-sm leading-relaxed text-on-surface-variant lg:pl-0">{description}</p>
+          <p className="max-w-2xl pl-8 text-sm leading-relaxed text-on-surface-variant lg:pl-0">{description}</p>
           <div className="flex items-center pl-8 lg:justify-end lg:pl-0">{children}</div>
         </>
       )}
@@ -149,7 +149,7 @@ export function Ajustes() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-gutter-xl p-layout-margin">
+    <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-gutter-xl p-layout-margin">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <span className="rounded bg-primary/10 px-2 py-0.5 font-code text-xs uppercase tracking-wider text-primary">
@@ -346,7 +346,7 @@ export function Ajustes() {
           }
           description={`Activa los campos numéricos a los que se aplica la precisión de arriba (${apiSettings.toleranceFields.length} de ${TOLERANCE_FIELD_OPTIONS.length}). Los apagados siempre se comparan de forma exacta.`}
         >
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {TOLERANCE_FIELD_OPTIONS.map((field) => {
               const active = apiSettings.toleranceFields.includes(field.key)
               return (
