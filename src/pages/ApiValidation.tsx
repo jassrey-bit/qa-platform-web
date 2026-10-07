@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   createRun,
   getRun,
@@ -13,21 +13,12 @@ import { ApiTestReport } from '../components/ApiTestReport'
 import { FileDropzone } from '../components/FileDropzone'
 import { LoadingBar } from '../components/LoadingBar'
 import { useJobPolling } from '../hooks/useJobPolling'
-import {
-  getApiValidationSettings,
-  MAX_TOLERANCE_DECIMALS,
-  TOLERANCE_FIELD_OPTIONS,
-} from '../lib/apiValidationSettings'
+import { decimalRulesLabel, getApiValidationSettings } from '../lib/apiValidationSettings'
 
 export function ApiValidation() {
   const [searchParams] = useSearchParams()
   const defaults = getApiValidationSettings()
-  const toleranceFieldsLabel =
-    defaults.toleranceFields.length === 0
-      ? 'ningún campo (sin tolerancia)'
-      : defaults.toleranceFields
-          .map((key) => TOLERANCE_FIELD_OPTIONS.find((o) => o.key === key)?.label ?? key)
-          .join(', ')
+  const ruleCount = Object.keys(defaults.decimalRules).length
 
   const [mode, setMode] = useState<RunMode>(defaults.defaultMode)
   const [fixtures, setFixtures] = useState<FixtureCase[]>([])
@@ -36,7 +27,6 @@ export function ApiValidation() {
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([])
 
   const [includeCustomCase, setIncludeCustomCase] = useState(defaults.expandCustomCaseByDefault)
-  const [toleranceDecimals, setToleranceDecimals] = useState(defaults.toleranceDecimals)
   const [customCaseId, setCustomCaseId] = useState('')
   const [customPayloadFile, setCustomPayloadFile] = useState<File | null>(null)
   const [readingCustomPayloadFile, setReadingCustomPayloadFile] = useState(false)
@@ -158,8 +148,7 @@ export function ApiValidation() {
       const { job_id } = await createRun(mode, {
         caseIds: selectedCaseIds.length > 0 ? selectedCaseIds : undefined,
         customCases,
-        toleranceDecimals,
-        toleranceFields: defaults.toleranceFields,
+        decimalRules: defaults.decimalRules,
       })
       setJobId(job_id)
     } catch (err) {
@@ -212,20 +201,14 @@ export function ApiValidation() {
               </button>
             ))}
           </div>
-          <label
-            className="flex items-center gap-2 text-xs text-on-surface-variant"
-            title={`Decimales que deben coincidir en: ${toleranceFieldsLabel} (el resto de los campos siempre se compara exacto). Más alto = más exigente; 0 solo compara la parte entera. Los campos se eligen en Ajustes.`}
+          <Link
+            to="/ajustes"
+            className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-primary"
+            title={`Decimales esperados: ${decimalRulesLabel(defaults.decimalRules)}. El resto de los campos se compara exacto. Se configuran en Ajustes.`}
           >
-            Decimales a comparar ({defaults.toleranceFields.length || 'ningún campo'})
-            <input
-              type="number"
-              min={0}
-              max={MAX_TOLERANCE_DECIMALS}
-              value={toleranceDecimals}
-              onChange={(e) => setToleranceDecimals(Number(e.target.value))}
-              className="w-16 rounded-lg border border-outline-variant/40 bg-surface-container-low px-2 py-1.5 text-sm text-on-surface"
-            />
-          </label>
+            <span className="material-symbols-outlined text-[16px]">decimal_increase</span>
+            Decimales esperados: {ruleCount === 0 ? 'ningún campo' : `${ruleCount} campo(s)`}
+          </Link>
         </div>
 
         <div className="flex flex-col gap-2">

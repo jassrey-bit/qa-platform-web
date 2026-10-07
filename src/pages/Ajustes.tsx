@@ -24,7 +24,11 @@ const DECIMAL_OPTIONS = Array.from({ length: MAX_TOLERANCE_DECIMALS + 1 }, (_, i
 // Compara ajustes ignorando el orden en que se activaron los campos.
 function sameSettings(a: object, b: object) {
   const normalize = (o: object) =>
-    JSON.stringify(o, (_, v) => (Array.isArray(v) ? [...v].sort() : v))
+    JSON.stringify(o, (_, v) => {
+      if (Array.isArray(v)) return [...v].sort()
+      if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).sort(([x], [y]) => x.localeCompare(y)))
+      return v
+    })
   return normalize(a) === normalize(b)
 }
 
@@ -115,7 +119,7 @@ export function Ajustes() {
   const [saved, setSaved] = useState(false)
 
   const dirty = !sameSettings(settings, savedDoc) || !sameSettings(apiSettings, savedApi)
-  const noToleranceFields = apiSettings.toleranceFields.length === 0
+  const ruleCount = Object.keys(apiSettings.decimalRules).length
 
   // Avisa al cerrar o recargar la pestaña con cambios sin guardar.
   useEffect(() => {
@@ -139,13 +143,14 @@ export function Ajustes() {
     setApiSettings(savedApi)
   }
 
-  function toggleToleranceField(key: string) {
-    setApiSettings((s) => ({
-      ...s,
-      toleranceFields: s.toleranceFields.includes(key)
-        ? s.toleranceFields.filter((f) => f !== key)
-        : [...s.toleranceFields, key],
-    }))
+  // `null` quita la regla: el campo se compara exacto y no se valida su formato.
+  function setFieldDecimals(key: string, decimals: number | null) {
+    setApiSettings((s) => {
+      const decimalRules = { ...s.decimalRules }
+      if (decimals === null) delete decimalRules[key]
+      else decimalRules[key] = decimals
+      return { ...s, decimalRules }
+    })
   }
 
   return (
@@ -226,7 +231,7 @@ export function Ajustes() {
       <SettingsSection
         icon="api"
         title="Validación de API"
-        description="Configura el modo de corrida, el caso personalizado y la tolerancia numérica por defecto."
+        description="Configura el modo de corrida, el caso personalizado y los decimales esperados por campo."
       >
         <SettingRow
           icon="alt_route"
@@ -276,86 +281,29 @@ export function Ajustes() {
 
         <SettingRow
           icon="decimal_increase"
-          label="Precisión decimal al comparar"
-          hint={<span className="text-xs text-on-surface-variant">Aplica solo a los campos activados abajo.</span>}
-          description={
-            noToleranceFields ? (
-              <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px]">info</span>
-                No hay campos activados: todos se comparan de forma exacta.
-              </span>
-            ) : (
-              'Decimales que deben coincidir para considerar iguales los valores. Con 0 solo se compara la parte entera; con 2, hasta el segundo decimal.'
-            )
-          }
-        >
-          <div
-            role="radiogroup"
-            aria-label="Precisión decimal"
-            aria-disabled={noToleranceFields}
-            title={noToleranceFields ? 'Activa al menos un campo con tolerancia para elegir la precisión' : undefined}
-            className={`flex gap-1.5 transition-opacity ${noToleranceFields ? 'opacity-40' : ''}`}
-          >
-            {DECIMAL_OPTIONS.map((n) => {
-              const active = apiSettings.toleranceDecimals === n
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  disabled={noToleranceFields}
-                  onClick={() => setApiSettings((s) => ({ ...s, toleranceDecimals: n }))}
-                  className={`h-9 w-9 rounded-lg font-code text-sm transition-all disabled:cursor-not-allowed ${
-                    active
-                      ? 'bg-primary text-on-primary shadow-md shadow-primary/25 disabled:shadow-none'
-                      : 'border border-outline-variant/40 text-on-surface-variant enabled:hover:bg-surface-container-high'
-                  }`}
-                >
-                  {n}
-                </button>
-              )
-            })}
-          </div>
-        </SettingRow>
-
-        <SettingRow
-          icon="checklist"
-          label="Campos con tolerancia decimal"
+          label="Decimales esperados por campo"
           wideControl
           hint={
-            <div className="flex items-center gap-2 text-xs">
+            ruleCount > 0 && (
               <button
                 type="button"
-                onClick={() =>
-                  setApiSettings((s) => ({ ...s, toleranceFields: TOLERANCE_FIELD_OPTIONS.map((o) => o.key) }))
-                }
-                className="text-primary hover:underline"
+                onClick={() => setApiSettings((s) => ({ ...s, decimalRules: {} }))}
+                className="text-xs text-primary hover:underline"
               >
-                Activar todos
+                Quitar todas las reglas
               </button>
-              <span className="text-on-surface-variant">·</span>
-              <button
-                type="button"
-                onClick={() => setApiSettings((s) => ({ ...s, toleranceFields: [] }))}
-                className="text-primary hover:underline"
-              >
-                Desactivar todos
-              </button>
-            </div>
+            )
           }
-          description={`Activa los campos numéricos a los que se aplica la precisión de arriba (${apiSettings.toleranceFields.length} de ${TOLERANCE_FIELD_OPTIONS.length}). Los apagados siempre se comparan de forma exacta.`}
+          description={`Para cada campo con regla, la API no debe traer más decimales que los indicados (si trae más, el caso falla) y la comparación contra el esperado se hace solo hasta esos decimales. "Exacto" = sin regla: se compara el valor completo. ${ruleCount} de ${TOLERANCE_FIELD_OPTIONS.length} campos con regla.`}
         >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {TOLERANCE_FIELD_OPTIONS.map((field) => {
-              const active = apiSettings.toleranceFields.includes(field.key)
+              const decimals = apiSettings.decimalRules[field.key]
+              const active = decimals !== undefined
               return (
-                <button
+                <label
                   key={field.key}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => toggleToleranceField(field.key)}
-                  className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all ${
+                  className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all ${
                     active
                       ? 'border-primary/30 bg-primary/10 text-primary'
                       : 'border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high'
@@ -367,10 +315,20 @@ export function Ajustes() {
                     </span>
                     {field.label}
                   </span>
-                  <span className="font-code text-[11px] opacity-80">
-                    {active ? `${apiSettings.toleranceDecimals} dec.` : 'exacto'}
-                  </span>
-                </button>
+                  <select
+                    aria-label={`Decimales esperados para ${field.label}`}
+                    value={active ? String(decimals) : ''}
+                    onChange={(e) => setFieldDecimals(field.key, e.target.value === '' ? null : Number(e.target.value))}
+                    className="rounded-md border border-outline-variant/40 bg-surface-container-low px-1.5 py-1 font-code text-xs text-on-surface"
+                  >
+                    <option value="">Exacto</option>
+                    {DECIMAL_OPTIONS.map((n) => (
+                      <option key={n} value={n}>
+                        {n} dec.
+                      </option>
+                    ))}
+                  </select>
+                </label>
               )
             })}
           </div>

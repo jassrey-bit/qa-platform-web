@@ -14,6 +14,19 @@ export interface CustomCase {
   expected_response?: unknown
 }
 
+// Un campo cuya respuesta trae más decimales que los esperados en Ajustes.
+// `values` lleva cada ocurrencia con su ruta (root[0].amortizaciones[3].cat).
+export interface DecimalViolation {
+  field: string
+  max_decimals: number
+  found_decimals: number
+  values: { path: string; value: number }[]
+}
+
+// Las corridas de la primera versión de esta validación guardaron el
+// error como texto.
+export type DecimalViolationEntry = DecimalViolation | string
+
 export interface RegressionCaseResult {
   case_id: string
   description: string
@@ -22,6 +35,8 @@ export interface RegressionCaseResult {
   execution_time_ms: number
   structural_diff: Record<string, unknown>
   financial_violations: string[]
+  // Ausente en corridas guardadas antes de las reglas de decimales por campo.
+  decimal_violations?: DecimalViolationEntry[]
   actual_response: unknown
   expected_response: unknown
 }
@@ -38,6 +53,7 @@ export interface ComparisonSide {
   response_time_ms: number
   data: unknown
   financial_violations: string[]
+  decimal_violations?: DecimalViolationEntry[]
 }
 
 export interface ComparisonCaseResult {
@@ -81,8 +97,7 @@ export interface RunListFilters {
 export interface CreateRunOptions {
   caseIds?: string[]
   customCases?: CustomCase[]
-  toleranceDecimals?: number
-  toleranceFields?: string[]
+  decimalRules?: Record<string, number>
 }
 
 export async function listFixtures(): Promise<FixtureCase[]> {
@@ -114,8 +129,7 @@ export async function createRun(
       mode,
       case_ids: options.caseIds ?? null,
       custom_cases: options.customCases ?? null,
-      tolerance_decimals: options.toleranceDecimals ?? null,
-      tolerance_fields: options.toleranceFields ?? null,
+      decimal_rules: options.decimalRules ?? null,
     }),
   })
   if (!response.ok) {

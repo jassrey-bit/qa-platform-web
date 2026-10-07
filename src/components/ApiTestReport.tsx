@@ -2,10 +2,12 @@ import type { ComparisonCaseResult, JobStatusResponse, RegressionCaseResult } fr
 import { formatApiReport } from '../lib/formatApiReport'
 import { ApiDiffViewer } from './ApiDiffViewer'
 import { CopyButton } from './CopyButton'
+import { DecimalViolationsViewer } from './DecimalViolationsViewer'
 import { RunStatusBadge } from './RunStatusBadge'
 import { StructuralDiffViewer } from './StructuralDiffViewer'
 
 type DoneJob = Extract<JobStatusResponse, { status: 'done' }>
+
 
 function RegressionCaseCard({ result }: { result: RegressionCaseResult }) {
   return (
@@ -30,6 +32,7 @@ function RegressionCaseCard({ result }: { result: RegressionCaseResult }) {
           </ul>
         </div>
       )}
+      <DecimalViolationsViewer violations={result.decimal_violations} />
       {Object.keys(result.structural_diff).length > 0 && (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium text-on-surface-variant">Diferencias estructurales</p>
@@ -72,6 +75,8 @@ function ComparisonCaseCard({ result }: { result: ComparisonCaseResult }) {
           ))}
         </div>
       </div>
+      <DecimalViolationsViewer violations={result.prod.decimal_violations} title="Decimales fuera de lo esperado (PROD)" />
+      <DecimalViolationsViewer violations={result.dev.decimal_violations} title="Decimales fuera de lo esperado (DEV)" />
       <ApiDiffViewer differences={result.differences} />
     </div>
   )

@@ -1,4 +1,4 @@
-import type { ComparisonDiff } from '../api/apiValidation'
+import type { ComparisonDiff, DecimalViolationEntry } from '../api/apiValidation'
 
 const FIELD_LABELS: Record<string, string> = {
   pago_fijo: 'Pago fijo',
@@ -32,7 +32,7 @@ const TYPE_LABELS: Record<string, string> = {
   type_mismatch: 'Tipo de dato distinto',
 }
 
-function fieldLabel(field: string): string {
+export function fieldLabel(field: string): string {
   return FIELD_LABELS[field] ?? field
 }
 
@@ -169,4 +169,50 @@ export function parseStructuralDiff(diff: Record<string, unknown> | null | undef
     deduped.push(r)
   }
   return deduped
+}
+
+export interface DecimalViolationRow {
+  label: string
+  maxDecimals: number
+  foundDecimals: number
+  // Ubicación legible ("Amortización 3", o el campo si está en la raíz) y valor.
+  occurrences: { location: string; value: number }[]
+}
+
+/**
+ * Traduce las violaciones de decimales del backend a filas legibles por
+ * campo, quitando las ocurrencias repetidas por la tabla de amortización
+ * duplicada en la respuesta. Las entradas en texto (corridas viejas) se
+ * devuelven aparte, tal cual.
+ */
+export function parseDecimalViolations(entries: DecimalViolationEntry[] | undefined): {
+  rows: DecimalViolationRow[]
+  legacy: string[]
+} {
+  const rows: DecimalViolationRow[] = []
+  const legacy: string[] = []
+
+  for (const entry of entries ?? []) {
+    if (typeof entry === 'string') {
+      legacy.push(entry)
+      continue
+    }
+    const label = fieldLabel(entry.field)
+    const seen = new Set<string>()
+    const occurrences: DecimalViolationRow['occurrences'] = []
+    for (const { path, value } of entry.values) {
+      const humanized = humanizeDiffPath(path)
+      if (seen.has(humanized)) continue
+      seen.add(humanized)
+      const arrow = humanized.lastIndexOf(' → ')
+      occurrences.push({ location: arrow === -1 ? humanized : humanized.slice(0, arrow), value })
+    }
+    rows.push({ label, maxDecimals: entry.max_decimals, foundDecimals: entry.found_decimals, occurrences })
+  }
+
+  return { rows, legacy }
+}
+
+export function decimalsLabel(n: number): string {
+  return `${n} decimal${n === 1 ? '' : 'es'}`
 }

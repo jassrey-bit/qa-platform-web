@@ -1,5 +1,33 @@
 import type { ComparisonCaseResult, JobStatusResponse, RegressionCaseResult } from '../api/apiValidation'
-import { dedupeDifferences, humanizeDiffPath, parseStructuralDiff } from './apiDiffFormat'
+import type { DecimalViolationEntry } from '../api/apiValidation'
+import {
+  decimalsLabel,
+  dedupeDifferences,
+  humanizeDiffPath,
+  parseDecimalViolations,
+  parseStructuralDiff,
+} from './apiDiffFormat'
+
+const DECIMAL_EXAMPLES = 3
+
+function formatDecimalViolations(title: string, entries: DecimalViolationEntry[] | undefined): string[] {
+  const { rows, legacy } = parseDecimalViolations(entries)
+  if (rows.length === 0 && legacy.length === 0) return []
+  const lines = [`${title}:`]
+  rows.forEach((r) => {
+    const examples = r.occurrences
+      .slice(0, DECIMAL_EXAMPLES)
+      .map((o) => `${o.location}: ${o.value}`)
+      .join(', ')
+    const more = r.occurrences.length > DECIMAL_EXAMPLES ? `, +${r.occurrences.length - DECIMAL_EXAMPLES} más` : ''
+    lines.push(
+      `  - ${r.label}: esperado máx. ${decimalsLabel(r.maxDecimals)}, recibido hasta ${decimalsLabel(r.foundDecimals)} ` +
+        `en ${r.occurrences.length} valor(es) (${examples}${more})`,
+    )
+  })
+  legacy.forEach((v) => lines.push(`  - ${v}`))
+  return lines
+}
 
 type DoneJob = Extract<JobStatusResponse, { status: 'done' }>
 
@@ -10,6 +38,7 @@ function formatRegressionCase(c: RegressionCaseResult, i: number): string {
     lines.push('Reglas financieras violadas:')
     c.financial_violations.forEach((v) => lines.push(`  - ${v}`))
   }
+  lines.push(...formatDecimalViolations('Decimales fuera de lo esperado', c.decimal_violations))
   const structuralRows = parseStructuralDiff(c.structural_diff)
   if (structuralRows.length > 0) {
     lines.push('Diferencias estructurales:')
@@ -31,6 +60,8 @@ function formatComparisonCase(c: ComparisonCaseResult, i: number): string {
   if (c.dev.financial_violations.length > 0) {
     lines.push(`Reglas financieras (DEV): ${c.dev.financial_violations.join('; ')}`)
   }
+  lines.push(...formatDecimalViolations('Decimales fuera de lo esperado (PROD)', c.prod.decimal_violations))
+  lines.push(...formatDecimalViolations('Decimales fuera de lo esperado (DEV)', c.dev.decimal_violations))
   const differences = dedupeDifferences(c.differences)
   if (differences.length > 0) {
     lines.push('Diferencias PROD vs DEV:')
