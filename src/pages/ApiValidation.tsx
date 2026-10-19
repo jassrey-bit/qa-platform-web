@@ -15,6 +15,46 @@ import { LoadingBar } from '../components/LoadingBar'
 import { useJobPolling } from '../hooks/useJobPolling'
 import { decimalRulesLabel, getApiValidationSettings } from '../lib/apiValidationSettings'
 
+// Reflejan las reglas que el backend valida sobre cada tabla de amortización.
+const FINANCIAL_RULES = [
+  {
+    id: 'R1',
+    name: 'Capital total',
+    formula: 'Suma de abonos a capital = Importe del crédito (monto solicitado)',
+  },
+  {
+    id: 'R2',
+    name: 'Composición del pago fijo',
+    formula: 'Por cada amortización: Capital + Interés + IVA + Int. Gracia + IVA Gracia = Pago fijo',
+  },
+  {
+    id: 'R3',
+    name: 'Total de pagos',
+    formula: 'Suma de todos los componentes (incluida la gracia) = Suma total de pagos fijos',
+  },
+]
+
+interface FixtureGroup {
+  name: string
+  cases: FixtureCase[]
+}
+
+// Las descripciones siguen el formato "Tipo - Gracia - Periodicidad - ...", así que
+// las dos primeras partes identifican la familia del caso.
+function fixtureFamily(description: string): string {
+  const parts = description.split(' - ').map((p) => p.trim())
+  return parts.length >= 3 ? `${parts[0]} · ${parts[1]}` : 'Otros'
+}
+
+function groupFixtures(fixtures: FixtureCase[]): FixtureGroup[] {
+  const groups = new Map<string, FixtureCase[]>()
+  for (const f of fixtures) {
+    const name = fixtureFamily(f.description)
+    groups.set(name, [...(groups.get(name) ?? []), f])
+  }
+  return Array.from(groups, ([name, cases]) => ({ name, cases }))
+}
+
 export function ApiValidation() {
   const [searchParams] = useSearchParams()
   const defaults = getApiValidationSettings()
@@ -68,6 +108,15 @@ export function ApiValidation() {
 
   function selectAllFiltered() {
     setSelectedCaseIds((prev) => Array.from(new Set([...prev, ...filteredFixtures.map((f) => f.case_id)])))
+  }
+
+  function toggleGroup(group: FixtureGroup) {
+    const ids = group.cases.map((f) => f.case_id)
+    setSelectedCaseIds((prev) =>
+      ids.every((id) => prev.includes(id))
+        ? prev.filter((id) => !ids.includes(id))
+        : Array.from(new Set([...prev, ...ids])),
+    )
   }
 
   function clearSelection() {
@@ -232,24 +281,43 @@ export function ApiValidation() {
             className="rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60"
           />
           {fixturesError && <p className="text-xs text-error">{fixturesError}</p>}
-          <div className="max-h-56 overflow-y-auto rounded-lg border border-outline-variant/20 bg-surface-container-low p-2">
-            {filteredFixtures.map((f) => (
-              <label
-                key={f.case_id}
-                className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-container-high"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedCaseIds.includes(f.case_id)}
-                  onChange={() => toggleCase(f.case_id)}
-                  className="mt-0.5 h-4 w-4 accent-primary"
-                />
-                <span>
-                  <span className="font-mono text-xs text-on-surface-variant">{f.case_id}</span>{' '}
-                  <span className="text-on-surface">{f.description}</span>
-                </span>
-              </label>
-            ))}
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-outline-variant/20 bg-surface-container-low px-2 pb-2">
+            {groupFixtures(filteredFixtures).map((group) => {
+              const selectedInGroup = group.cases.filter((f) => selectedCaseIds.includes(f.case_id)).length
+              const allSelected = selectedInGroup === group.cases.length
+              return (
+                <div key={group.name}>
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-surface-container-low px-2 pb-1 pt-3">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                      {group.name}
+                      <span className="ml-2 font-normal normal-case tracking-normal">
+                        {selectedInGroup}/{group.cases.length}
+                      </span>
+                    </span>
+                    <button type="button" onClick={() => toggleGroup(group)} className="text-xs text-primary hover:underline">
+                      {allSelected ? 'Quitar grupo' : 'Seleccionar grupo'}
+                    </button>
+                  </div>
+                  {group.cases.map((f) => (
+                    <label
+                      key={f.case_id}
+                      className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-container-high"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCaseIds.includes(f.case_id)}
+                        onChange={() => toggleCase(f.case_id)}
+                        className="mt-0.5 h-4 w-4 accent-primary"
+                      />
+                      <span>
+                        <span className="font-mono text-xs text-on-surface-variant">{f.case_id}</span>{' '}
+                        <span className="text-on-surface">{f.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )
+            })}
             {filteredFixtures.length === 0 && (
               <p className="p-2 text-sm text-on-surface-variant">Sin resultados para el filtro actual.</p>
             )}
@@ -338,6 +406,23 @@ export function ApiValidation() {
         </div>
       </form>
 
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {FINANCIAL_RULES.map((rule) => (
+          <div
+            key={rule.id}
+            className="flex items-start gap-3 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3"
+          >
+            <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+              {rule.id}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-on-surface">{rule.name}</p>
+              <p className="mt-0.5 text-xs text-on-surface-variant">{rule.formula}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {submitError && (
         <p className="rounded-xl border border-error/30 bg-error-container/20 p-4 text-on-error-container">
           {submitError}
@@ -355,7 +440,9 @@ export function ApiValidation() {
           Error: {job.error}
         </p>
       )}
-      {job?.status === 'done' && <ApiTestReport job={job} onRerun={handleRerun} rerunning={rerunning} />}
+      {job?.status === 'done' && (
+        <ApiTestReport key={job.job_id} job={job} onRerun={handleRerun} rerunning={rerunning} />
+      )}
 
       {!jobId && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-outline-variant/30 bg-surface-container/30 p-10 text-center">
