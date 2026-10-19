@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getComparison } from '../api/docValidation'
 import { getExecutionFileUrl, listExecutions, rerunExecution } from '../api/reports'
 import type { ExecutionRecord, ListExecutionsFilters } from '../api/reports'
+import { ApiReportes } from '../components/ApiReportes'
 import { CopyButton } from '../components/CopyButton'
 import { formatComparisonResult } from '../lib/formatReport'
 
@@ -16,7 +17,7 @@ async function copyExecutionResult(jobId: string): Promise<string> {
 
 const MODULES = [
   { key: 'doc-validation', label: 'Validación de documentos', available: true },
-  { key: 'api', label: 'Validación de API', available: false },
+  { key: 'api', label: 'Validación de API', available: true },
   { key: 'e2e', label: 'Automatización E2E', available: false },
 ]
 
@@ -25,6 +26,75 @@ function isSuccess(status: string) {
 }
 
 export function Reportes() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  // El módulo va en la URL para que "Reportes" recuerde la pestaña al volver
+  // desde otra página (p. ej. después de "Ejecutar de nuevo").
+  const module = searchParams.get('modulo') === 'api' ? 'api' : 'doc-validation'
+
+  function selectModule(key: string) {
+    setSearchParams(key === 'api' ? { modulo: 'api' } : {}, { replace: true })
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-gutter-lg p-layout-margin">
+      <div className="sm:hidden">
+        <label htmlFor="module-select" className="sr-only">
+          Selecciona un módulo
+        </label>
+        <select
+          id="module-select"
+          value={module}
+          onChange={(e) => selectModule(e.target.value)}
+          className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-sm font-medium text-on-surface outline-none focus:border-primary"
+        >
+          {MODULES.map((m) => (
+            <option key={m.key} value={m.key} disabled={!m.available}>
+              {m.label}
+              {!m.available ? ' (Próximamente)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="hidden w-full max-w-full overflow-x-auto sm:block">
+        <div className="flex w-max items-center gap-gutter-sm rounded-2xl border border-outline-variant/30 bg-surface-container-low p-1.5">
+          {MODULES.map((m) =>
+            m.available ? (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => selectModule(m.key)}
+                className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                  module === m.key
+                    ? 'bg-primary text-on-primary shadow-sm'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                }`}
+              >
+                {m.label}
+              </button>
+            ) : (
+              <button
+                key={m.key}
+                type="button"
+                disabled
+                className="flex shrink-0 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-sm text-on-surface-variant"
+              >
+                {m.label}
+                <span className="whitespace-nowrap rounded-full border border-outline-variant/30 bg-surface-container-high px-2 py-0.5 text-xs">
+                  Próximamente
+                </span>
+              </button>
+            ),
+          )}
+        </div>
+      </div>
+
+      {module === 'api' ? <ApiReportes /> : <DocReportes />}
+    </div>
+  )
+}
+
+function DocReportes() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('')
   const [dateFrom, setDateFrom] = useState('')
@@ -84,53 +154,7 @@ export function Reportes() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-gutter-lg p-layout-margin">
-      <div className="sm:hidden">
-        <label htmlFor="module-select" className="sr-only">
-          Selecciona un módulo
-        </label>
-        <select
-          id="module-select"
-          defaultValue="doc-validation"
-          className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-sm font-medium text-on-surface outline-none focus:border-primary"
-        >
-          {MODULES.map((m) => (
-            <option key={m.key} value={m.key} disabled={!m.available}>
-              {m.label}
-              {!m.available ? ' (Próximamente)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="hidden w-full max-w-full overflow-x-auto sm:block">
-        <div className="flex w-max items-center gap-gutter-sm rounded-2xl border border-outline-variant/30 bg-surface-container-low p-1.5">
-          {MODULES.map((m) =>
-            m.available ? (
-              <button
-                key={m.key}
-                type="button"
-                className="shrink-0 whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm"
-              >
-                {m.label}
-              </button>
-            ) : (
-              <button
-                key={m.key}
-                type="button"
-                disabled
-                className="flex shrink-0 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-sm text-on-surface-variant"
-              >
-                {m.label}
-                <span className="whitespace-nowrap rounded-full border border-outline-variant/30 bg-surface-container-high px-2 py-0.5 text-xs">
-                  Próximamente
-                </span>
-              </button>
-            ),
-          )}
-        </div>
-      </div>
-
+    <>
       <div className="grid grid-cols-1 gap-gutter-md rounded-2xl border border-outline-variant/30 bg-surface-container/70 p-4 backdrop-blur-2xl sm:p-6 md:grid-cols-4">
         <label className="flex flex-col gap-2">
           <span className="text-xs uppercase tracking-wider text-on-surface-variant">
@@ -303,7 +327,7 @@ export function Reportes() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

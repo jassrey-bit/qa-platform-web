@@ -24,7 +24,7 @@ export interface ListExecutionsResponse {
 }
 
 /**
- * Requiere que el backend de validación de documentos exponga `GET /comparisons`
+ * Requiere que el backend exponga `GET /comparisons`
  * con soporte de listado + filtros y persistencia de archivos originales.
  * Ese endpoint aún no existe (solo hay crear/consultar un job puntual).
  */
