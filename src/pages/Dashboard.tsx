@@ -85,7 +85,7 @@ export function Dashboard() {
                     <span className="material-symbols-outlined text-[24px]">{m.icon}</span>
                   </div>
                   <span className="rounded-full border border-outline-variant/30 bg-surface-bright/60 px-3 py-1 text-xs text-on-surface-variant">
-                    Próximamente
+                    En Desarrollo
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -98,7 +98,7 @@ export function Dashboard() {
                 disabled
                 className="mt-8 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-outline-variant/30 bg-surface-bright/40 px-4 py-3 font-medium text-on-surface-variant"
               >
-                <span>Próximamente</span>
+                <span>En Desarrollo</span>
                 <span className="material-symbols-outlined text-[18px]">lock</span>
               </button>
             </div>

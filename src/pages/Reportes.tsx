@@ -50,7 +50,7 @@ export function Reportes() {
           {MODULES.map((m) => (
             <option key={m.key} value={m.key} disabled={!m.available}>
               {m.label}
-              {!m.available ? ' (Próximamente)' : ''}
+              {!m.available ? ' (En Desarrollo)' : ''}
             </option>
           ))}
         </select>
@@ -81,7 +81,7 @@ export function Reportes() {
               >
                 {m.label}
                 <span className="whitespace-nowrap rounded-full border border-outline-variant/30 bg-surface-container-high px-2 py-0.5 text-xs">
-                  Próximamente
+                  En Desarrollo
                 </span>
               </button>
             ),
