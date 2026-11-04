@@ -5,6 +5,7 @@ import { Ajustes } from './pages/Ajustes'
 import { ApiValidation } from './pages/ApiValidation'
 import { Dashboard } from './pages/Dashboard'
 import { DocValidation } from './pages/DocValidation'
+import { E2EValidation } from './pages/E2EValidation'
 import { Reportes } from './pages/Reportes'
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/doc-validation" element={<DocValidation />} />
             <Route path="/api-validation" element={<ApiValidation />} />
+            <Route path="/e2e-validation" element={<E2EValidation />} />
             <Route path="/reportes" element={<Reportes />} />
             <Route path="/ajustes" element={<Ajustes />} />
           </Routes>

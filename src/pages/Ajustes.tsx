@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { E2EPlatformsManager } from '../components/E2EPlatformsManager'
 import { ToggleSwitch } from '../components/ToggleSwitch'
 import type { RunMode } from '../api/apiValidation'
 import {
@@ -164,8 +165,8 @@ export function Ajustes() {
             Ajustes de validación
           </h1>
           <p className="mt-1 max-w-2xl text-on-surface-variant">
-            Define los valores por defecto que se usarán al crear una nueva validación de documentos o una nueva
-            corrida de API.
+            Define los valores por defecto que se usarán al crear una nueva validación de documentos, una nueva
+            corrida de API o una corrida E2E.
           </p>
         </div>
 
@@ -332,6 +333,21 @@ export function Ajustes() {
               )
             })}
           </div>
+        </SettingRow>
+      </SettingsSection>
+
+      <SettingsSection
+        icon="robot_2"
+        title="Automatización E2E"
+        description="Plataformas disponibles para ejecutar las pruebas de BaseProject."
+      >
+        <SettingRow
+          icon="dns"
+          label="Plataformas"
+          wideControl
+          description="Las que tienen candado vienen por defecto del servidor. Las que agregues aquí se guardan al momento y las ve todo el equipo (no dependen del botón Guardar cambios). Antes de agregar una se verifica que responda."
+        >
+          <E2EPlatformsManager />
         </SettingRow>
       </SettingsSection>
     </div>

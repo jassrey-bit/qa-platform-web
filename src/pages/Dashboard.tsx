@@ -18,9 +18,9 @@ const MODULES = [
   {
     name: 'Automatización E2E',
     description: 'Suite de pruebas end-to-end con Cucumber sobre la plataforma.',
-    path: '#',
+    path: '/e2e-validation',
     icon: 'robot_2',
-    available: false,
+    available: true,
   },
 ]
 
