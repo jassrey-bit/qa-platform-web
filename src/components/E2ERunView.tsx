@@ -11,9 +11,9 @@ import {
 } from '../api/e2eValidation'
 
 const STEP_ICON: Record<StepStatus, { icon: string; className: string; label: string }> = {
-  PASSED: { icon: 'verified', className: 'text-success', label: 'Pasó' },
-  FAILED: { icon: 'cancel', className: 'text-error', label: 'Falló' },
-  RUNNING: { icon: 'progress_activity', className: 'animate-spin text-primary', label: 'Ejecutando' },
+  PASSED: { icon: 'done_outline', className: 'text-success', label: 'Pasó' },
+  FAILED: { icon: 'error', className: 'text-error', label: 'Falló' },
+  RUNNING: { icon: 'sync', className: 'animate-spin text-primary', label: 'Ejecutando' },
   PENDING_RUN: { icon: 'radio_button_unchecked', className: 'text-on-surface-variant/50', label: 'Pendiente' },
   SKIPPED: { icon: 'block', className: 'text-on-surface-variant/60', label: 'Omitido' },
   UNDEFINED: { icon: 'help', className: 'text-tertiary', label: 'Sin definir' },
@@ -58,11 +58,11 @@ function useElapsed(from: string, to: string | null): number {
   return (to ? new Date(to).getTime() : now) - new Date(from).getTime()
 }
 
-function StepIcon({ status }: { status: StepStatus }) {
+function StepIcon({ status, icon }: { status: StepStatus; icon?: string }) {
   const meta = STEP_ICON[status] ?? STEP_ICON.UNKNOWN
   return (
     <span className={`material-symbols-outlined shrink-0 text-[18px] ${meta.className}`} title={meta.label}>
-      {meta.icon}
+      {icon ?? meta.icon}
     </span>
   )
 }
@@ -74,9 +74,9 @@ function visibleSteps(steps: RunStep[]): RunStep[] {
 
 function StepList({ steps, jobId, platform }: { steps: RunStep[]; jobId: string; platform: string }) {
   return (
-    <ol className="flex flex-col">
+    <ol className="flex min-w-0 flex-col">
       {visibleSteps(steps).map((step) => (
-        <li key={step.id} className="flex flex-col gap-1.5">
+        <li key={step.id} className="flex min-w-0 flex-col gap-1.5">
           <div
             className={`flex items-start gap-2 rounded-md px-2 py-1.5 text-sm ${
               step.status === 'RUNNING' ? 'bg-primary/10 text-primary' : ''
@@ -98,8 +98,8 @@ function StepList({ steps, jobId, platform }: { steps: RunStep[]; jobId: string;
             )}
           </div>
           {step.error && (
-            <div className="ml-8 flex flex-col gap-2">
-              <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border border-error/30 bg-error-container/20 p-3 font-code text-xs text-on-error-container">
+            <div className="flex min-w-0 flex-col gap-2 sm:ml-8">
+              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-error/30 bg-error-container/20 p-3 font-code text-xs text-on-error-container">
                 {step.error.trim()}
               </pre>
               {step.screenshot && (
@@ -107,13 +107,13 @@ function StepList({ steps, jobId, platform }: { steps: RunStep[]; jobId: string;
                   href={getFailureScreenshotUrl(jobId, platform, step.screenshot)}
                   target="_blank"
                   rel="noreferrer"
-                  className="block w-fit overflow-hidden rounded-lg border border-outline-variant/30"
+                  className="block overflow-hidden rounded-lg border border-outline-variant/30 sm:w-fit"
                   title="Abrir captura en tamaño completo"
                 >
                   <img
                     src={getFailureScreenshotUrl(jobId, platform, step.screenshot)}
                     alt={`Captura del paso fallido: ${step.text}`}
-                    className="max-h-64 w-auto"
+                    className="w-full sm:max-h-64 sm:w-auto"
                   />
                 </a>
               )}
@@ -125,111 +125,232 @@ function StepList({ steps, jobId, platform }: { steps: RunStep[]; jobId: string;
   )
 }
 
-function LivePanel({ job, platform }: { job: RunStatusResponse; platform: PlatformProgress }) {
-  const [expanded, setExpanded] = useState(false)
-  const current = platform.scenarios.find((s) => s.id === platform.current_scenario_id) ?? null
-  const position = current ? platform.scenarios.findIndex((s) => s.id === current.id) + 1 : 0
-  const scenarioSteps = current ? visibleSteps(current.steps) : []
-  const done = scenarioSteps.filter((s) => s.status !== 'PENDING_RUN' && s.status !== 'RUNNING').length
-  const showShot = job.params.live_screenshots && platform.live
+function scenarioIcon(scenario: RunScenario, currentId: string | null): StepStatus {
+  if (scenario.finished || scenario.status === 'CANCELLED') return scenario.status
+  return scenario.id === currentId ? 'RUNNING' : 'PENDING_RUN'
+}
+
+function fileLabel(scenario: RunScenario): string {
+  const file = scenario.uri.split('/').pop() ?? scenario.uri
+  return scenario.line ? `${file}:${scenario.line}` : file
+}
+
+function ScenarioDetail({
+  job,
+  platform,
+  scenario,
+  isLive,
+  onFollowLive,
+}: {
+  job: RunStatusResponse
+  platform: PlatformProgress
+  scenario: RunScenario
+  isLive: boolean
+  onFollowLive: (() => void) | null
+}) {
+  const position = platform.scenarios.findIndex((s) => s.id === scenario.id) + 1
+  const steps = visibleSteps(scenario.steps)
+  const done = steps.filter((s) => s.status !== 'PENDING_RUN' && s.status !== 'RUNNING').length
+  const showShot = isLive && job.params.live_screenshots && platform.live
+  const statusMeta = STEP_ICON[scenarioIcon(scenario, platform.current_scenario_id)] ?? STEP_ICON.UNKNOWN
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-surface-container-low p-4">
-      {current ? (
-        <>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-                En vivo · escenario {position} de {platform.total}
-              </p>
-              <h3 className="font-headline text-base text-on-surface">{current.name}</h3>
-              <p className="font-code text-xs text-on-surface-variant">
-                {current.uri}
-                {current.line ? `:${current.line}` : ''}
-              </p>
-            </div>
-            <span className="font-code text-xs text-on-surface-variant">
-              paso {Math.min(done + 1, scenarioSteps.length)} de {scenarioSteps.length}
-            </span>
-          </div>
-          <div className={`grid gap-4 ${showShot ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : ''}`}>
-            <StepList steps={current.steps} jobId={job.job_id} platform={platform.name} />
-            {showShot && platform.live && (
-              <div className="flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setExpanded((v) => !v)}
-                  className="overflow-hidden rounded-lg border border-outline-variant/30 bg-surface"
-                  title={expanded ? 'Reducir captura' : 'Ampliar captura'}
-                >
-                  <img
-                    src={getLiveScreenshotUrl(job.job_id, platform.name, platform.live.at)}
-                    alt="Última captura de la ejecución"
-                    className="w-full"
-                  />
-                </button>
-                <p className="text-xs text-on-surface-variant">
-                  Última captura, tras «{platform.live.step}» · {new Date(platform.live.at).toLocaleTimeString()}
-                </p>
-              </div>
-            )}
-          </div>
-          {expanded && platform.live && (
-            <img
-              src={getLiveScreenshotUrl(job.job_id, platform.name, platform.live.at)}
-              alt="Última captura de la ejecución, ampliada"
-              className="w-full rounded-lg border border-outline-variant/30"
-            />
-          )}
-        </>
-      ) : (
-        <div className="flex items-center gap-2.5 text-sm text-on-surface-variant">
-          <span className="material-symbols-outlined animate-spin text-[18px] text-primary">progress_activity</span>
-          {job.phase ??
-            (platform.state === 'queued'
-              ? 'En espera de que termine la plataforma anterior…'
-              : 'Preparando Cucumber y el navegador…')}
+    <div
+      className={`flex min-w-0 flex-col gap-3 rounded-xl border bg-surface-container-low p-3 sm:p-4 ${
+        isLive ? 'border-primary/30' : 'border-outline-variant/20'
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p
+            className={`text-[11px] font-semibold uppercase tracking-wider ${
+              isLive ? 'text-primary' : 'text-on-surface-variant'
+            }`}
+          >
+            {isLive ? 'En vivo · ' : ''}Escenario {position} de {platform.total}
+            {isLive ? '' : ` · ${statusMeta.label}`}
+          </p>
+          <h3 className="break-words font-headline text-base text-on-surface">{scenario.name}</h3>
+          <p className="break-all font-code text-xs text-on-surface-variant">
+            {scenario.uri}
+            {scenario.line ? `:${scenario.line}` : ''}
+          </p>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          {isLive && steps.length > 0 && (
+            <span className="font-code text-xs text-on-surface-variant">
+              paso {Math.min(done + 1, steps.length)} de {steps.length}
+            </span>
+          )}
+          {!isLive && scenario.duration_ms > 0 && (
+            <span className="font-code text-xs text-on-surface-variant">{formatDuration(scenario.duration_ms)}</span>
+          )}
+          {onFollowLive && (
+            <button
+              type="button"
+              onClick={onFollowLive}
+              className="flex items-center gap-1.5 rounded-lg border border-primary/40 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+            >
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+              Seguir en vivo
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={`grid grid-cols-[minmax(0,1fr)] gap-4 ${showShot ? 'xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]' : ''}`}>
+        <StepList steps={scenario.steps} jobId={job.job_id} platform={platform.name} />
+        {showShot && platform.live && (
+          // En pantallas angostas va antes de los pasos: una lista larga la dejaría fuera de vista.
+          <div className="order-first flex min-w-0 flex-col gap-1.5 xl:order-none">
+            <a
+              href={getLiveScreenshotUrl(job.job_id, platform.name, platform.live.at)}
+              target="_blank"
+              rel="noreferrer"
+              className="block overflow-hidden rounded-lg border border-outline-variant/30 bg-surface"
+              title="Abrir captura en tamaño completo"
+            >
+              <img
+                src={getLiveScreenshotUrl(job.job_id, platform.name, platform.live.at)}
+                alt="Última captura de la ejecución"
+                className="w-full"
+              />
+            </a>
+            <p className="break-words text-xs text-on-surface-variant">
+              Última captura, tras «{platform.live.step}» · {new Date(platform.live.at).toLocaleTimeString()}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-function ScenarioRow({ scenario, jobId, platform }: { scenario: RunScenario; jobId: string; platform: string }) {
-  // Hasta que el usuario lo abra o cierre, un escenario fallido se muestra
-  // abierto (también si falla mientras ya estaba en pantalla).
-  const [toggled, setToggled] = useState<boolean | null>(null)
-  const open = toggled ?? scenario.status === 'FAILED'
-  const setOpen = (fn: (v: boolean) => boolean) => setToggled(fn(open))
+/**
+ * Lista de escenarios a la izquierda y pasos de uno solo a la derecha. El
+ * detalle sigue al escenario en curso hasta que el usuario elige otro. En
+ * pantallas angostas la lista se pliega tras una barra sobre el detalle, para
+ * que una corrida larga no deje lo que está pasando al fondo de la página.
+ */
+function ScenarioExplorer({ job, platform, running }: { job: RunStatusResponse; platform: PlatformProgress; running: boolean }) {
+  const [pinnedId, setPinnedId] = useState<string | null>(null)
+  const [listOpen, setListOpen] = useState(false)
+  const listRef = useRef<HTMLUListElement>(null)
+  const selectedRowRef = useRef<HTMLLIElement>(null)
+
+  const { scenarios } = platform
+  const live = running && platform.state === 'running'
+  const currentId = live ? platform.current_scenario_id : null
+  const followedId = live
+    ? (currentId ?? scenarios.find((s) => !s.finished)?.id)
+    : (scenarios.find((s) => s.status !== 'PASSED')?.id ?? scenarios[0]?.id)
+  const shownId = pinnedId ?? followedId
+  const shown = scenarios.find((s) => s.id === shownId) ?? scenarios[0]
+
+  // Solo mueve el scroll de la lista, nunca el de la página.
+  useEffect(() => {
+    const list = listRef.current
+    const row = selectedRowRef.current
+    if (!list || !row) return
+    const top = row.offsetTop
+    const bottom = top + row.offsetHeight
+    if (top < list.scrollTop) list.scrollTop = top
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight
+  }, [shown?.id, listOpen])
+
+  function select(id: string) {
+    // Elegir el que está corriendo equivale a volver a seguir en vivo.
+    setPinnedId(id === currentId ? null : id)
+    setListOpen(false)
+  }
+
+  if (!shown) return null
+
   return (
-    <li className="border-t border-outline-variant/20 first:border-t-0">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-container-high"
-        aria-expanded={open}
-      >
-        <StepIcon status={scenario.finished || scenario.status === 'CANCELLED' ? scenario.status : 'RUNNING'} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm text-on-surface">{scenario.name}</span>
-          <span className="block truncate font-code text-xs text-on-surface-variant">
-            {scenario.feature} · {scenario.uri}
-            {scenario.line ? `:${scenario.line}` : ''}
-          </span>
-        </span>
-        {scenario.duration_ms > 0 && (
-          <span className="shrink-0 font-code text-xs text-on-surface-variant">{formatDuration(scenario.duration_ms)}</span>
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-3 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)]">
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <p className="hidden text-sm font-medium text-on-surface lg:block">Escenarios</p>
+        {scenarios.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setListOpen((v) => !v)}
+            aria-expanded={listOpen}
+            className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-left text-sm text-on-surface lg:hidden"
+          >
+            <span className="material-symbols-outlined text-[18px] text-on-surface-variant">list</span>
+            <span className="font-medium">Escenarios</span>
+            <span className="font-code text-xs text-on-surface-variant">
+              {platform.finished}/{platform.total}
+            </span>
+            {platform.failed > 0 && <span className="text-xs font-medium text-error">{platform.failed} con fallo</span>}
+            <span className="material-symbols-outlined ml-auto text-[18px] text-on-surface-variant">
+              {listOpen ? 'expand_less' : 'expand_more'}
+            </span>
+          </button>
         )}
-        <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-          {open ? 'expand_less' : 'expand_more'}
-        </span>
-      </button>
-      {open && (
-        <div className="px-3 pb-3">
-          <StepList steps={scenario.steps} jobId={jobId} platform={platform} />
-        </div>
-      )}
-    </li>
+        <ul
+          ref={listRef}
+          className={`relative max-h-80 overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-low lg:block lg:max-h-[70vh] ${
+            listOpen ? 'block' : 'hidden'
+          }`}
+        >
+          {scenarios.map((sc) => {
+            const selected = sc.id === shown.id
+            return (
+              <li
+                key={sc.id}
+                ref={selected ? selectedRowRef : undefined}
+                className="border-t border-outline-variant/20 first:border-t-0"
+              >
+                <button
+                  type="button"
+                  onClick={() => select(sc.id)}
+                  aria-current={selected ? 'true' : undefined}
+                  title={`${sc.feature} · ${sc.uri}${sc.line ? `:${sc.line}` : ''}`}
+                  className={`flex min-h-11 w-full items-center gap-3 border-l-2 px-3 py-2.5 text-left ${
+                    selected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-surface-container-high'
+                  }`}
+                >
+                  <StepIcon
+                    status={scenarioIcon(sc, currentId)}
+                    icon={scenarioIcon(sc, currentId) === 'PASSED' ? 'check_circle' : undefined}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-on-surface">{sc.name}</span>
+                    <span className="block truncate font-code text-xs text-on-surface-variant">{fileLabel(sc)}</span>
+                  </span>
+                  {sc.duration_ms > 0 && (
+                    <span className="shrink-0 font-code text-xs text-on-surface-variant">{formatDuration(sc.duration_ms)}</span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      <div className="min-w-0 lg:pt-[1.625rem]">
+        <ScenarioDetail
+          job={job}
+          platform={platform}
+          scenario={shown}
+          isLive={shown.id === currentId}
+          onFollowLive={live && pinnedId !== null ? () => setPinnedId(null) : null}
+        />
+      </div>
+    </div>
+  )
+}
+
+function PreparingPanel({ job, platform }: { job: RunStatusResponse; platform: PlatformProgress }) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl border border-primary/30 bg-surface-container-low p-4 text-sm text-on-surface-variant">
+      <span className="material-symbols-outlined animate-spin text-[18px] text-primary">progress_activity</span>
+      {job.phase ??
+        (platform.state === 'queued'
+          ? 'En espera de que termine la plataforma anterior…'
+          : 'Preparando Cucumber y el navegador…')}
+    </div>
   )
 }
 
@@ -317,7 +438,7 @@ export function E2ERunView({
   const percent = summary.total > 0 ? Math.round((summary.finished / summary.total) * 100) : 0
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-4 backdrop-blur-2xl">
+    <section className="flex min-w-0 flex-col gap-4 rounded-2xl border border-outline-variant/20 bg-surface-container/60 p-3 backdrop-blur-2xl sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${status.className}`}>
@@ -330,7 +451,7 @@ export function E2ERunView({
           </span>
           {job.params.branch && (
             <span
-              className="flex items-center gap-1 font-code text-xs text-on-surface-variant"
+              className="flex min-w-0 items-center gap-1 break-all font-code text-xs text-on-surface-variant"
               title={job.params.commit ?? undefined}
             >
               <span className="material-symbols-outlined text-[16px]">account_tree</span>
@@ -356,7 +477,7 @@ export function E2ERunView({
             </button>
           )}
           {running && confirmCancel && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-on-surface-variant">¿Detener todas las plataformas?</span>
               <button
                 type="button"
@@ -456,8 +577,8 @@ export function E2ERunView({
             </div>
           </div>
 
-          {(platform.state === 'running' || platform.state === 'queued') && running && (
-            <LivePanel job={job} platform={platform} />
+          {platform.scenarios.length === 0 && (platform.state === 'running' || platform.state === 'queued') && running && (
+            <PreparingPanel job={job} platform={platform} />
           )}
 
           {platform.error && (
@@ -469,16 +590,8 @@ export function E2ERunView({
             </div>
           )}
 
-          {platform.scenarios.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <p className="text-sm font-medium text-on-surface">Escenarios</p>
-              <ul className="overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low">
-                {platform.scenarios.map((sc) => (
-                  <ScenarioRow key={sc.id} scenario={sc} jobId={job.job_id} platform={platform.name} />
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* key: cada plataforma recuerda por separado qué escenario se eligió. */}
+          <ScenarioExplorer key={`scenarios-${platform.name}`} job={job} platform={platform} running={running} />
 
           {/* key: al cambiar de plataforma la consola arranca desde cero. */}
           <ConsolePanel key={platform.name} jobId={job.job_id} platform={platform.name} live={running} />
